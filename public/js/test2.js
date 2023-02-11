@@ -16,7 +16,7 @@ const servers = {
 };
 
 /**
- * 
+ * Turn on the local Camara and display on screen
  * @param {boolean} audio Set audio to true in production or when testing between two computer. Set audio to false when single computer testing.
  */
 async function getLocalStream(audio) {
