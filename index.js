@@ -13,7 +13,7 @@ app.get(`/`, (req, res) => {
 });
 
 
-
-const port = 3030;
+console.log(process.env.port);
+const port = process.env.port || 443;
 server.listen(port);
 console.log(`Open(Ctrl + click) http://localhost:${port} in your broswer.`);
