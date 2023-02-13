@@ -2,38 +2,47 @@
  * NodeJS App Entry Point
  */
 var express = require('express');
+const path = require(`path`);
 var https = require('https');
 var http = require('http');
 var fs = require('fs');
-//var session = require('cookie-session');
+const { v4: uuidv4 } = require("uuid");
+//const session = require(`express-session`);
 
 // Create a service (the app object is just a callback).
 var app = express();
 
-
-app.set(`view engine`, `ejs`);
-app.use(express.static(`public`));
 app.use(requireHTTPS);
+app.set(`view engine`, `ejs`);
+app.use(express.static(path.join(__dirname, `public`)));
+app.use(express.urlencoded({ extended: false }));
 /*app.use(
     session({
-      secret: "some secret",
-      httpOnly: true,  // Don't let browser javascript access cookies.
-      secure: true, // Only use cookies over https.
+        secret: `I /**kNow 21@$y$@sec*-*-{}*#re3@($t.`,
+        resave: false,
+        saveUninitialized: true
+        httpOnly: true,  // Don't let browser javascript access cookies.
+        secure: true, // Only use cookies over https.
     })
   );
 */
 
+/**
+ * Temporay codes
+ */
 
+var roomId = uuidv4();
 
 /*
 * Routes
 */
 app.get(`/`, (req, res) => {
-    //res.status(200).send(`Hello World`);
-    res.render(`test2`);
+    res.redirect(`/${roomId}`);
 });
 
-
+app.get(`/:room`, (req, res) => {
+    res.render(`test2`, { roomId: req.params.room });
+});
 
 
 /**

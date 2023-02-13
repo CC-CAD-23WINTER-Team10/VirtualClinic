@@ -1,11 +1,11 @@
 /* 
 * Client Side JS
 */
+//const socket = io(`/`);
+//var peer = new Peer(undefined, {path: `/peerjs`,host: `/`,port: `3030`,});
 
 let myVideoStream; //localCamera
 let remoteVideoStream; //Camera From others
-let peerConnection;
-
 const servers = {
     //STUN Servers
     iceServers: [
@@ -14,6 +14,7 @@ const servers = {
         }
     ]
 };
+let peerConnection = new RTCPeerConnection(servers);
 
 /**
  * Turn on the local Camara and display on screen
@@ -33,14 +34,7 @@ async function getLocalStream(audio) {
 /**
  * function Description
  */
-async function sendVideoCallRequest() {
-    peerConnection = new RTCPeerConnection(servers);
-
-    remoteVideoStream = new MediaStream();
-
-    document.getElementById(`user-2`).srcObject = remoteVideoStream;
-
-    
+async function createOffer() { 
 
     /**
      * Add Local Tracks to peerConnection
@@ -53,15 +47,40 @@ async function sendVideoCallRequest() {
         
     });
 
+    peerConnection.onicecandidate = async (event) =>{
+        if(event.candidate){
+            console.log(`New ICE Cand: `, event.candidate);
+        }
+    }
+
     /**
      * Set Offer
      */
-    let offer = await peerConnections[0].createOffer();
+    let offer = await peerConnection.createOffer();
 
     await peerConnection.setLocalDescription(offer);
+
+    console.log(`Offer: `, offer);
 }
 
+function setRemoteVideoStream() {
+    remoteVideoStream = new MediaStream();
+    document.getElementById(`user-2`).srcObject = remoteVideoStream;
+    console.log(`Set Remote Video Stream`);
 
-document.getElementById(`start`).onclick = function() {
-    getLocalStream(false);
+    peerConnection.ontrack = (event) =>{
+        let remoteTracks = event.streams[0].getTracks();
+        remoteTracks.forEach(track => {
+            remoteVideoStream.addTrack(track);
+        });
+    }
+    console.log(`Add Remote Video Stream`);
+}
+
+document.getElementById(`start`).onclick = async function() {
+    await getLocalStream(false);
+    
+    setRemoteVideoStream();
+
+    createOffer();
 };
