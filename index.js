@@ -1,64 +1,126 @@
 /**
  * NodeJS App Entry Point
  */
-var express = require('express');
+const express = require('express');
 const path = require(`path`);
-var https = require('https');
-var http = require('http');
-var fs = require('fs');
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
 const { v4: uuidv4 } = require("uuid");
-//const session = require(`express-session`);
+const { Server } = require("socket.io");
+const session = require(`express-session`);
 
 // Create a service (the app object is just a callback).
-var app = express();
+const app = express();
+// Create an HTTP service.
+const serverHTTP = http.createServer(app);
+// Create an HTTPS service identical to the HTTP service.
+const credentials = {
+    key: fs.readFileSync('keys/ECC-privkey.pem'),
+    cert: fs.readFileSync('keys/ECC-cert.pem')
+  };
+const serverHTTPS = https.createServer(credentials,app);
 
+//Set Middlewares
 app.use(requireHTTPS);
 app.set(`view engine`, `ejs`);
 app.use(express.static(path.join(__dirname, `public`)));
 app.use(express.urlencoded({ extended: false }));
-/*app.use(
+app.use(
     session({
         secret: `I /**kNow 21@$y$@sec*-*-{}*#re3@($t.`,
         resave: false,
-        saveUninitialized: true
+        saveUninitialized: true,
         httpOnly: true,  // Don't let browser javascript access cookies.
         secure: true, // Only use cookies over https.
+        ephemeral: true // delete this cookie while browser close
     })
   );
-*/
+
 
 /**
- * Temporay codes
+ * Temporary codes
  */
 
-var roomId = uuidv4();
+class User {
+    constructor(id){
+        this.id = id;
+    }
+}
+
+var chatRoom = {
+    roomID: uuidv4(),
+    users: []
+};
+
 
 /*
 * Routes
 */
 app.get(`/`, (req, res) => {
-    res.redirect(`/${roomId}`);
+    //let id = uuidv4();
+    //req.session.userID = id;
+    res.render(`test2`);
 });
 
-app.get(`/:room`, (req, res) => {
-    res.render(`test2`, { roomId: req.params.room });
+app.get(`/:id`, (req, res) => {
+    let id = req.params.id.trim();
+    let caller = new User(id);
+    res.render(`test2`);
 });
 
+/**
+ * Socket.IO
+ */
+const io = new Server(serverHTTPS);
+io.on('connection', function (socket) {
+    
+    socket.on('join a chat room', function () {
+       socket.join(`${chatRoom.roomID}`);
+       const rooms = io.of("/").adapter.rooms;
+       const users = rooms.get(chatRoom.roomID);
+       console.log(users.size);
+
+       if (users.size < 2) {
+        //get join message from the first one in the chat room
+        socket.emit(`You are the first one`);
+       } else {
+        //get join message from the later comer
+
+        //send the comer id to the existing users
+        socket.to(`${chatRoom.roomID}`).emit(`new joiner`, socket.id);
+
+        //send back the request for offer(s) with the existing user ids (including the comer)
+        socket.emit(`You need to provide offer`, Array.from(users));
+       }
+       
+    });
+
+    socket.on(`I provide offer`, function(offer, id){
+        io.to(id).emit(`new offer`, offer,socket.id);
+    });
+
+    socket.on(`my answer to`, function(id, answer){
+        io.to(id).emit(`you answer from`,socket.id, answer);
+    });
+
+    socket.on(`new-ice-candidate to`, function(id, candidate){
+        io.to(id).emit(`icecandidate from`,socket.id, candidate);
+    });
+
+    socket.on('error', function (er) {
+        console.log(er);
+    });
+});
 
 /**
  * Port Listening
  */
-// Create an HTTP service.
-http.createServer(app).listen(80);
-
-// Create an HTTPS service identical to the HTTP service.
-let credentials = {
-    key: fs.readFileSync('keys/ECC-privkey.pem'),
-    cert: fs.readFileSync('keys/ECC-cert.pem')
-  };
-https.createServer(credentials, app).listen(443);
-
-console.log(`Open(Ctrl + click) https://localhost in your broswer.`);
+serverHTTP.listen(80);
+serverHTTPS.listen(443);
+console.log(`===================================`);
+console.log(`Server is ready`);
+console.log(`===================================`);
 
 /**
  * Other Functions
