@@ -1,0 +1,13 @@
+#previews {
+    display: flex;
+    height: 100px;
+    gap: 5px;
+}
+
+#local-video {
+    background-color: aqua;
+}
+
+.remote-video {
+    background-color:chartreuse;
+}
