@@ -63,10 +63,10 @@ app.get(`/`, (req, res) => {
     res.render(`test2`);
 });
 
-app.get(`/:id`, (req, res) => {
-    let id = req.params.id.trim();
-    let caller = new User(id);
-    res.render(`test2`);
+app.get(`/CHAT`, (req, res) => {
+    //let id = req.params.id.trim();
+    //let caller = new User(id);
+    res.render(`chatroom`);
 });
 
 /**

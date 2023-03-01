@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/chatroom.css">
+    <title>Chatroom</title>
+</head>
+
+<body>
+    <div id="previews">
+        <video id="local-video" autoplay playsinline>1</video>
+        <!-- <video class="remote-video" autoplay playsinline>1</video>
+        <video class="remote-video" autoplay playsinline>2</video>
+        <video class="remote-video" autoplay playsinline>3</video> -->
+    </div>
+
+    <div id="active-speaker">
+        
+    </div>
+
+    <div>
+        <button id="call">Call</button>
+        <button id="hangup">Hang up</button>
+    </div>
+</body>
+<script  src="/socket.io/socket.io.js"></script>
+<script src="/js/chatroom.js" type="module"></script>
+
+</html>
