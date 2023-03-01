@@ -58,16 +58,9 @@ var chatRoom = {
 * Routes
 */
 app.get(`/`, (req, res) => {
-    //let id = uuidv4();
-    //req.session.userID = id;
-    res.render(`test2`);
-});
-
-app.get(`/CHAT`, (req, res) => {
-    //let id = req.params.id.trim();
-    //let caller = new User(id);
     res.render(`chatroom`);
 });
+
 
 /**
  * Socket.IO
