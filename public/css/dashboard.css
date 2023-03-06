@@ -1,0 +1,526 @@
+body {
+    height: 100vh;
+    min-height: 400px;
+    /*Should be 306px(main) + header + footer!!!!!!!!!!!!!!!!*/
+}
+
+main {
+    box-sizing: border-box;
+    justify-content: flex-start;
+    align-items: stretch;
+    width: 100vw;
+    gap: 10px;
+    padding: 10px;
+}
+
+.alert {
+    box-sizing: border-box;
+    position: absolute;
+    z-index: 999;
+    border-radius: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+
+}
+
+.alert-title {
+    color: #f9ff45;
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.alert-message {
+    max-width: 50vw;
+    color: #f9ff45;
+}
+
+.alert-buttons {
+    display: flex;
+    gap: 30px;
+}
+
+.alert-buttons>button {
+    box-sizing: content-box;
+    padding: 5px 10px;
+    background: #03e9f4;
+    color: #000000;
+    border: none;
+    border-radius: 5px;
+    min-width: 50px;
+
+}
+
+.alert-buttons>button:hover {
+    box-shadow: 0 0 5px #03e9f4, 0 0 25px #03e9f4;
+}
+
+/************************************************************************
+* Chat Main Menu
+*************************************************************************/
+
+.shrinkable-box {
+    display: flex;
+    gap: 10px;
+}
+
+/* 
+*The shrinkable-box will become .shrinkable-box-collaspe
+*when the user is about to be in a chatroom or in a chatroom,
+*to give more space to the video frames.
+*When the box is under .shrinkable-box-collaspe,
+*its children elements will dispay:none , and an arrow shows in the midddle.
+*When the box is hovered, its children will show and the arrow disappears.
+*/
+.shrinkable-box-collaspe:hover {
+    display: flex;
+    gap: 10px;
+}
+
+
+/**************************************************
+**User List and search bar
+**************************************************/
+.shrinkable-box>div:first-child {
+    display: flex;
+    flex-direction: column;
+
+}
+
+.shrinkable-box-collaspe>div {
+    display: none;
+}
+
+
+
+.shrinkable-box-collaspe:hover>div:first-child {
+    /*Search bar and user list*/
+    display: flex;
+    flex-direction: column;
+}
+
+.shrinkable-box-collaspe:hover>div:nth-of-type(2) {
+    /*Personal Detail */
+    display: block;
+}
+
+.expension-button {
+    display: none;
+    position: absolute;
+    z-index: 2;
+    top: calc(50% - 20px);
+    right: 0;
+    width: 2em;
+    box-sizing: border-box;
+    border: none;
+    background-color: transparent;
+    color: rgb(255, 255, 255);
+    height: 40px;
+}
+
+
+.shrinkable-box-collaspe>.expension-button {
+    display: inline-block;
+}
+
+.shrinkable-box-collaspe:hover>.expension-button {
+    display: none;
+}
+
+
+
+.search-bar {
+    display: flex;
+    background-color: #323232;
+    align-items: center;
+    padding: 5px;
+    border: none;
+    border-radius: 5px;
+
+}
+
+.search-bar .icon {
+    background-color: transparent;
+    height: 30px;
+    width: 30px;
+}
+
+.search-bar input {
+    height: 30px;
+    box-sizing: border-box;
+    color: white;
+    font-size: 1em;
+    background-color: transparent;
+    border: none;
+    flex-grow: 1;
+}
+
+
+.search-bar input:focus-visible {
+    outline: none;
+
+}
+
+
+.line {
+    height: 2px;
+    background-color: #7e7e7e;
+    margin: 10px 0;
+}
+
+.user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    overflow-y: auto;
+}
+
+.user {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background-color: #323232;
+    border-radius: 5px;
+    padding: 5px;
+    gap: 5px;
+    height: 50px;
+    width: 300px;
+    flex-shrink: 0;
+}
+
+.user>div:nth-child(1) {
+    /*Person Icon*/
+    background-color: rebeccapurple;
+    aspect-ratio: 1;
+    height: 100%;
+    border-radius: 50%;
+    background-size: cover;
+}
+
+.user>div:nth-child(2) {
+    /*Person Name*/
+    color: white;
+    flex-shrink: 1;
+}
+
+.user>div:nth-child(3) {
+    /*Status Bar*/
+    background-color: greenyellow;
+    width: 5px;
+    height: 100%;
+    margin-right: 0;
+    margin-left: auto;
+    border-radius: 5px;
+}
+
+/**************************************************
+**End of User List and search bar
+**************************************************/
+/**************************************************
+**Person Detail Section
+**************************************************/
+
+.person-detial>div:first-child {
+    /*Upper Section (Personal Details)*/
+    display: flex;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: solid 2px #7e7e7e71;
+}
+
+.person-detial>div:first-child>div:nth-child(1) {
+    /*BIG Protrait Icon*/
+    border-radius: 50%;
+    background-color: blueviolet;
+    height: 150px;
+    width: 150px;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+}
+
+.person-detial>div:first-child>div:nth-child(2) {
+    /*Person Detail Container*/
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.person-detial>div:first-child>div:nth-child(2)>div {
+    /*Person Detail Contents*/
+    color: white;
+}
+
+.person-detial>div:first-child>div:nth-child(2)>div:first-child {
+    /*Person Detail Content - Name*/
+    font-size: 1.5em;
+    font-weight: bold;
+    border-bottom: solid 2px white;
+    flex-shrink: 1;
+}
+
+.person-detial>div:first-child>div:nth-child(2)>div:last-child {
+    /*Status*/
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    margin-top: auto;
+    margin-bottom: 0;
+}
+
+#statusIcon {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+
+.person-detial>div:last-child {
+    /*Button Container*/
+    margin-top: 10px;
+    display: flex;
+
+    gap: 5px;
+}
+
+
+.person-detial button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background-color: rgb(112, 224, 0);
+}
+
+.person-detial button:disabled {
+    background-color: rgb(177, 177, 177);
+}
+
+.person-detial button>svg {
+    fill: white;
+    width: 70%;
+    height: 70%;
+}
+
+/**************************************************
+**End of Person Detail Section
+**************************************************/
+
+/************************************************************************
+* End of Chat Main Menu
+*************************************************************************/
+
+/************************************************************************
+* Chatroom
+*************************************************************************/
+#chatroom {
+    flex-grow: 1;
+    flex-direction: column;
+    gap: 2px;
+    box-sizing: border-box;
+}
+
+.video-cover {
+    z-index: 4;
+    height: 100%;
+    width: inherit;
+    position: absolute;
+
+}
+
+#setting {
+    position:absolute;
+    z-index: 99;
+    width: fit-content;
+    height: auto;
+    top: 50%; 
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* display: flex; */
+    flex-direction: column;
+    gap: 30px;
+    backdrop-filter: none;
+}
+
+#setting > div:first-child {
+    display: grid;
+    color: #ffffff;
+    gap: 10px;
+    grid-template-columns: 1fr 2fr;
+    grid-template-rows: max-content max-content;
+    justify-items: stretch;
+    align-items: center;
+}
+
+#setting > div:last-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+}
+
+#setting select {
+    color: #000000;
+}
+
+#setting button {
+    box-sizing: content-box;
+    min-width: 42px;
+    border: none;
+    padding: 5px 10px;
+    background-color: #007ea7;
+    color: #ffffff;
+    border-radius: 5px;
+}
+
+#setting button:hover {
+    box-shadow: #ffffff 0 0 6px 0;
+}
+/**************************************************
+**Preview Section
+**************************************************/
+.preview-container {
+    gap: 10px;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 160px;
+    flex-shrink: 0;
+}
+
+.preview {
+    height: 150px;
+    width: 300px;
+    /*!!!!!!!!!!!!!!!!!!TEMP*/
+    background-color: #323232;
+    position: relative;
+}
+
+.controls {
+    width: inherit;
+    height: inherit;
+    z-index: 5;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+.controls>div:first-child {
+    /*Top*/
+    display: flex;
+    justify-content: flex-end
+}
+
+.controls>div:first-child>* {
+    /* Pin */
+    height: 20px;
+    padding: 3px;
+    border-radius: 5px;
+    background-color: #323232;
+    fill: chocolate;
+}
+
+.controls>div:last-child {
+    /*Bottom*/
+    display: flex;
+}
+
+.controls>div:last-child>* {
+    /*Mute*/
+    height: 20px;
+    padding: 2px;
+    border-radius: 5px;
+    background-color: #323232;
+    fill: cornflowerblue;
+}
+
+/**************************************************
+**End of Preview Section
+**************************************************/
+/**************************************************
+**Big Video Frame
+**************************************************/
+
+.active-speaker {
+    background-color: #323232;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.self-controls {
+    opacity: 0;
+    position: absolute;
+    z-index: 5;
+    width: inherit;
+    display: flex;
+    flex-direction: row;
+    gap: 30px;
+    align-items: center;
+    justify-content: center;
+    height: 80px;
+    background: linear-gradient(rgb(50 50 50), rgb(0 0 0 / 55%));
+}
+
+.self-controls:hover {
+    animation: controls-anime 1s forwards;
+}
+
+@keyframes controls-anime {
+    0% {
+        opacity: 0;
+    }
+
+    
+    100% {
+        opacity: 1;
+    }
+}
+
+.control-button {
+    height: 50px;
+    width: 50px;
+    border:none;
+    border-radius: 50%;
+    background: #007ea7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.control-button:hover {
+    box-shadow:rgb(255 255 255) 0px 0px 7px 0px;
+}
+
+.control-button:disabled{
+
+    background: rgb(104, 104, 104);
+
+}
+
+
+.control-button>* {
+    max-height: 70%;
+    max-width: 70%;
+    fill: #ffffff;
+}
+
+
+/**************************************************
+**End of Big Video Frame
+**************************************************/
+
+/************************************************************************
+* End of Chatroom
+*************************************************************************/

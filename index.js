@@ -20,7 +20,8 @@ const credentials = {
     cert: fs.readFileSync('keys/ECC-cert.pem')
   };
 const serverHTTPS = https.createServer(credentials,app);
-
+//create Socket IO
+const io = new Server(serverHTTPS);
 //Set Middlewares
 app.use(requireHTTPS);
 app.set(`view engine`, `ejs`);
@@ -43,11 +44,18 @@ app.use(
  */
 
 class User {
-    constructor(id){
-        this.id = id;
+    constructor(username, password, firstName, lastName){
+        this.id = uuidv4();
+        this.username = username;
+        this.password = password;
+        this.firstName = firstName;
+        this.lastName = lastName;
     }
 }
 
+var users=[
+    new User(`001`,`001`,`F001`,`L001`),
+]
 var chatRoom = {
     roomID: uuidv4(),
     users: []
@@ -58,16 +66,45 @@ var chatRoom = {
 * Routes
 */
 app.get(`/`, (req, res) => {
+    res.render(`index`);
+});
+
+app.post(`/auth`,(req, res) => {
+    let username = req.body.username.trim();
+    let password = req.body.password.trim();
+    let existingUser = users.filter(u => u.username == username)[0];
+    if (existingUser) {
+        if(existingUser.password == password){
+            //Log in 
+            res.redirect(`dashboard`);
+        }else{
+            res.render(`index`,{authError:true});
+        }
+    } else {
+        res.render(`index`,{authError:true});
+    }
+
+
+});
+app.get(`/chat`, (req, res) => {
     res.render(`chatroom`);
 });
 
-
+app.get(`/dashboard`, (req, res) => {
+    res.render(`dashboard`);
+});
 /**
  * Socket.IO
  */
-const io = new Server(serverHTTPS);
+
 io.on('connection', function (socket) {
     
+
+
+
+    /**
+     * Chat Room IO
+     */
     socket.on('join a chat room', function () {
        socket.join(`${chatRoom.roomID}`);
        const rooms = io.of("/").adapter.rooms;
