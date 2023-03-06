@@ -105,3 +105,7 @@ dist
 
 # Web Certifications
 keys/
+
+# typescript-complied js files
+public/js/*.js
+public/js/*.js.map
