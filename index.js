@@ -10,20 +10,25 @@ const { v4: uuidv4 } = require("uuid");
 const { Server } = require("socket.io");
 const session = require(`express-session`);
 
+//Localhost Determination
+const localhost = false;////////////Set to true when run on local host
+console.log(localhost);
 // Create a service (the app object is just a callback).
 const app = express();
 // Create an HTTP service.
 const serverHTTP = http.createServer(app);
 // Create an HTTPS service identical to the HTTP service.
-const credentials = {
+const credentials = localhost? {} : {
     key: fs.readFileSync('keys/ECC-privkey.pem'),
     cert: fs.readFileSync('keys/ECC-cert.pem')
   };
-const serverHTTPS = https.createServer(credentials,app);
+const serverHTTPS = localhost? {} : https.createServer(credentials,app);
 //create Socket IO
-const io = new Server(serverHTTPS);
+const io = new Server(localhost? serverHTTP : serverHTTPS);
 //Set Middlewares
-app.use(requireHTTPS);
+if(!localhost) {
+    app.use(requireHTTPS);
+}
 app.set(`view engine`, `ejs`);
 app.use(express.static(path.join(__dirname, `public`)));
 app.use(express.urlencoded({ extended: false }));
@@ -147,10 +152,13 @@ io.on('connection', function (socket) {
  * Port Listening
  */
 serverHTTP.listen(80);
-serverHTTPS.listen(443);
-console.log(`===================================`);
-console.log(`Server is ready`);
-console.log(`===================================`);
+if(!localhost){
+    serverHTTPS.listen(443);
+}
+
+console.log(`=============================================`);
+console.log(`Server is ready with localhost = ${localhost}`);
+console.log(`=============================================`);
 
 /**
  * Other Functions
