@@ -1,8 +1,11 @@
 # VirtualClinic
 
 ## Instructions
+### Put On A Server With Docker
 
-### Test Locally(Run on localhost)
+### Test Locally With Docker
+
+### Test Locally Without Docker
 + STEP 1: Create a directory with any name you want.
 
 + STEP 2: Open a ternimal from this directory, or Open a terminal then change directory to this one.
