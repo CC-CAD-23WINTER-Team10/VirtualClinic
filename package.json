@@ -8,7 +8,7 @@
     "dev-nm": "nodemon index.js",
     "dev": "tsc-watch --onSuccess \"nodemon dist/index.js\"",
     "d":"tsc && nodemon index.js",
-    "start": "node index.js"
+    "start": "tsc && node index.js"
   },
   "repository": {
     "type": "git",
