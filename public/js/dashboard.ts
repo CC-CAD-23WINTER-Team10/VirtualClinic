@@ -3,6 +3,7 @@ import { Chatroom } from "./NewChatroom.js";
 /* 
 * Dashboard
 */
+//@ts-ignore
 const socket = io(`/`);
 var currentStatus: Status;
 var users: User[] = [];

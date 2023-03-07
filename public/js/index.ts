@@ -1,6 +1,7 @@
 /**
  * Login Page 
  */
+//@ts-ignore
 const socket = io(`/`);
 var loginForm = document.getElementById(`loginForm`) as HTMLFormElement;
 var submitButton = document.getElementById(`submit`) as HTMLAnchorElement;

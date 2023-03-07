@@ -2,6 +2,7 @@ import { PConnection } from "./PConnection.js";
 /* 
 * Client Side JS
 */
+//@ts-ignore
 const socket = io(`/`);
 var localStream: MediaStream; //localCamera
 var localVideoFrame = document.getElementById(`local-video`) as HTMLVideoElement;
@@ -49,6 +50,12 @@ async function getLocalStream(audio: boolean) {
 
 }
 
+
+
+/**
+ * Create a HTML Video element that holds the video from remote users.
+ * @returns HTML Video element
+ */
 function createVideoPreview() {
     let newPreview = document.createElement(`video`);
     newPreview.setAttribute(`autoplay`, `autoplay`);
@@ -60,7 +67,9 @@ function createVideoPreview() {
 
 
 
-
+/**
+ * Signal the server to start a video chat.
+ */
 function joinARoom() {
     socket.emit(`join a chat room`);
 }
