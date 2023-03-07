@@ -12,7 +12,6 @@ const session = require(`express-session`);
 
 //Localhost Determination
 const localhost = false;////////////Set to true when run on local host
-console.log(localhost);
 // Create a service (the app object is just a callback).
 const app = express();
 // Create an HTTP service.
