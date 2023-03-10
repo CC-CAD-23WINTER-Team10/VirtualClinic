@@ -1,3 +1,4 @@
+//@ts-ignore
 import { PConnection } from "./PConnection.js";
 /* 
 * Client Side JS

@@ -1,4 +1,6 @@
+//@ts-ignore
 import { User, Status, myDiv, YesAlertBox } from "./User.js";
+//@ts-ignore
 import { Chatroom } from "./NewChatroom.js";
 /* 
 * Dashboard

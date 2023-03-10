@@ -1,4 +1,6 @@
+//@ts-ignore
 import { PConnection } from "./PConnection.js";
+//@ts-ignore
 import { User, Status, myDiv, YesAlertBox, AlertBox } from "./User.js";
 
 export class Chatroom {
@@ -21,15 +23,15 @@ export class Chatroom {
 
     constructor(socket:any, chatroomDiv:HTMLDivElement){
         this.socket = socket;
-        this.previewContainer = chatroomDiv.querySelector(`.preview-container`);
-        this.activeFrame = chatroomDiv.querySelector(`.active-speaker`);
-        this.activeVideo = this.activeFrame.querySelector(`video`);
-        this.settingButton = chatroomDiv.querySelector(`#self-setting`);
-        this.screenButton = chatroomDiv.querySelector(`#self-screen`);
-        this.selfMicButton = chatroomDiv.querySelector(`#self-mic`);
-        this.selfCamButton = chatroomDiv.querySelector(`#self-cam`);
-        this.selfExitButton = chatroomDiv.querySelector(`#self-exit`);
-        this.setting = chatroomDiv.querySelector(`#setting`);
+        this.previewContainer = chatroomDiv.querySelector(`.preview-container`)!;
+        this.activeFrame = chatroomDiv.querySelector(`.active-speaker`)!;
+        this.activeVideo = this.activeFrame.querySelector(`video`)!;
+        this.settingButton = chatroomDiv.querySelector(`#self-setting`)!;
+        this.screenButton = chatroomDiv.querySelector(`#self-screen`)!;
+        this.selfMicButton = chatroomDiv.querySelector(`#self-mic`)!;
+        this.selfCamButton = chatroomDiv.querySelector(`#self-cam`)!;
+        this.selfExitButton = chatroomDiv.querySelector(`#self-exit`)!;
+        this.setting = chatroomDiv.querySelector(`#setting`)!;
 
         this.settingButton.addEventListener(`click`, ()=>{
             this.showSetting();
@@ -101,7 +103,7 @@ export class Chatroom {
     
 
     async start() {
-        let permission = await this.getLocalStream(true);
+        let permission = await this.getLocalStream();
 
         if(permission){
             
@@ -135,7 +137,7 @@ export class Chatroom {
             const title = `Media Device Issue`
             let message = ``;
             if(cameras.length == 1 && !cameras[0].label){
-                message = `You may disable the access to camara for this website or you don't have any available camara. `
+                message = `You may disable the access to camara for this website or you don't have any available camara.<br>`
                 let option = document.createElement(`option`);
                 option.innerHTML = `No available camara`;
                 videoSelector.add(option);
