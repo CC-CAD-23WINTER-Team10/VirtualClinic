@@ -3,7 +3,11 @@
 ## Instructions
 ### Put On A Server With Docker
 
+--Placeholder
+
 ### Test Locally With Docker
+
+--Placeholder
 
 ### Test Locally Without Docker
 + STEP 1: Create a directory with any name you want.
@@ -18,7 +22,11 @@
    ```javascript
    const localhost = true;
    ```
-+ STEP 5: After saving the index.js, there are 4 options for you to run on terminal:
++ STEP 5: run this command in the terminal:
+   ```
+   npm install
+   ```
++ STEP 6: After saving the index.js, there are 4 options for you to run on terminal:
 
    1. Only test the exsiting codes, without further code change[^1]
       ```
