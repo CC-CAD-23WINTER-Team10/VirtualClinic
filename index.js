@@ -46,7 +46,6 @@ app.use(
 /**
  * Temporary codes
  */
-
 class User {
     constructor(username, password, firstName, lastName){
         this.id = uuidv4();
@@ -60,10 +59,6 @@ class User {
 var users=[
     new User(`001`,`001`,`F001`,`L001`),
 ]
-var chatRoom = {
-    roomID: uuidv4(),
-    users: []
-};
 
 
 /*
