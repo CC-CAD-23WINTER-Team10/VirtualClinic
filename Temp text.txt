@@ -2,3 +2,5 @@ Ref.
 1. https://levelup.gitconnected.com/building-a-video-chat-app-with-node-js-socket-io-webrtc-26f46b213017
 2. https://www.youtube.com/watch?v=QsH8FL0952k
 3. https://www.youtube.com/watch?v=LzJQDhiGAr4
+4. https://codepen.io/soufiane-khalfaoui-hassani/pen/LYpPWda
+5. https://codepen.io/lonekorean/pen/OJQPmpm
