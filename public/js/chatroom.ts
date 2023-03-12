@@ -4,13 +4,13 @@ import { PConnection } from "./PConnection.js";
 * Client Side JS
 */
 //@ts-ignore
-const socket = io(`/`);
+const socket = io(`/`); // create a socket io conection with the server
 var localStream: MediaStream; //localCamera
 var localVideoFrame = document.getElementById(`local-video`) as HTMLVideoElement;
 var previewContainer = document.getElementById(`previews`) as HTMLDivElement;
 var callButton = document.getElementById(`call`) as HTMLButtonElement;
 var hangupButton = document.getElementById(`hangup`) as HTMLButtonElement; //
-var connections: PConnection[] = [];
+var connections: PConnection[] = []; // to save multiple peers connections
 
 
 
@@ -18,7 +18,7 @@ callButton.onclick = async function () {
     let permission = await getLocalStream(false);
 
     if (permission) {
-        callButton.setAttribute("disabled", "disabled");
+        callButton.setAttribute("disabled", "disabled"); // to disable click button once it was clicked
         joinARoom();
     }
 
@@ -29,7 +29,7 @@ callButton.onclick = async function () {
 
 /**
  * Asking the user a permission to turn on the local Camara and display on screen.
- * if permission is accepted,it will return ture;
+ * if permission is accepted,it will return true;
  * if permission is denied, it will return false. 
  * @param {boolean} audio Set audio to true in production or when testing between two computer. Set audio to false when single computer testing.
  */
