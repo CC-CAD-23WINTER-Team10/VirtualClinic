@@ -1,32 +1,33 @@
 /**
  * NodeJS App Entry Point
  */
+// libraries required by the app
 const express = require('express');
 const path = require(`path`);
 const https = require('https');
 const http = require('http');
-const fs = require('fs');
-const { v4: uuidv4 } = require("uuid");
-const { Server } = require("socket.io");
-const session = require(`express-session`);
+const fs = require('fs');  // file system
+const { v4: uuidv4 } = require("uuid");  // generate room id
+const { Server } = require("socket.io"); // signaling among peers
+const session = require(`express-session`); // Login + sessions
 
 //Localhost Determination
-const localhost = false;////////////Set to true when run on local host
+const localhost = true; //Set to true when run on local host
 // Create a service (the app object is just a callback).
 const app = express();
 // Create an HTTP service.
 const serverHTTP = http.createServer(app);
 // Create an HTTPS service identical to the HTTP service.
 const credentials = localhost? {} : {
-    key: fs.readFileSync('keys/ECC-privkey.pem'),
-    cert: fs.readFileSync('keys/ECC-cert.pem')
+    key: fs.readFileSync('keys/ECC-privkey.pem'),  // key for HTTPS 
+    cert: fs.readFileSync('keys/ECC-cert.pem')     // Certidicate for the HTTPS
   };
-const serverHTTPS = localhost? {} : https.createServer(credentials,app);
+const serverHTTPS = localhost? {} : https.createServer(credentials,app); // If localhost is true then empty object, if not then create a HTTPS object with its credenttials
 //create Socket IO
 const io = new Server(localhost? serverHTTP : serverHTTPS);
 //Set Middlewares
 if(!localhost) {
-    app.use(requireHTTPS);
+    app.use(requireHTTPS); //If not running localhost then app is force to use HTTPS
 }
 app.set(`view engine`, `ejs`);
 app.use(express.static(path.join(__dirname, `public`)));
