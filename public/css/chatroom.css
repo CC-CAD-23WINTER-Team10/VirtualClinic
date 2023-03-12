@@ -1,3 +1,7 @@
+main{
+    flex-direction: column;
+}
+
 #previews {
     display: flex;
     height: 350px;
