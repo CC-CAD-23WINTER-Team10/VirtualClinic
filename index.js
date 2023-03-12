@@ -56,9 +56,14 @@ class User {
     }
 }
 
+
 var users=[
     new User(`001`,`001`,`F001`,`L001`),
 ]
+var chatRoom = {
+    roomID: uuidv4(),
+    users: []
+};
 
 
 /*
