@@ -14,7 +14,7 @@ export class PConnection {
             }
         ]
     };
-    peerConnection = new RTCPeerConnection(this.configuration);
+    peerConnection = new RTCPeerConnection(this.configuration); // WebRTC connection object
 
 
     constructor(id: string, localStream: MediaStream, socket: any, remoteVideoFrame:HTMLVideoElement) {
@@ -24,7 +24,7 @@ export class PConnection {
         this.remoteVideoFrame = remoteVideoFrame;
 
 
-
+        // Listen for ICE candidates and send to the other peer
         this.peerConnection.addEventListener('icecandidate', event => {
             if (event.candidate) {
                 console.log(`Get ICE FROM STUN SERVER.`);
@@ -33,6 +33,7 @@ export class PConnection {
             }
         });
 
+        // Listen to enable the streaming video and audio on UI
         this.peerConnection.addEventListener('track', async (event) => {
             console.log(`Get TRACK INFO FROM PEER CONNECTION.`);
             const [remoteStream] = event.streams;
@@ -40,6 +41,7 @@ export class PConnection {
             console.log(`Set Remote Video Stream`);
         });
 
+        // Listen connection changes
         this.peerConnection.addEventListener('connectionstatechange', event => {
             console.log(`CONNECTION STATE CHANGED`);
             if (this.peerConnection.connectionState === 'connected') {
@@ -66,7 +68,7 @@ export class PConnection {
         console.log(`Local Tracks is added to connection(${this.id})`);
     }
 
-
+    // To provide an offer to other peer
     async initACall() {
         console.log(`INITIALISE A CALL.`);
         /**
@@ -82,7 +84,7 @@ export class PConnection {
         console.log(`END OF CALL INITIALISATION.`);
     }
 
-
+    // Sending SDPs to other peer
     async setRemoteDescription(offer: RTCSessionDescriptionInit) {
         console.log(`GET OFFER FROM CALLER.`);
         this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));

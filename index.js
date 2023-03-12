@@ -29,7 +29,7 @@ const io = new Server(localhost? serverHTTP : serverHTTPS);
 if(!localhost) {
     app.use(requireHTTPS); //If not running localhost then app is force to use HTTPS
 }
-app.set(`view engine`, `ejs`);
+app.set(`view engine`, `ejs`); //Enable ejs templates
 app.use(express.static(path.join(__dirname, `public`)));
 app.use(express.urlencoded({ extended: false }));
 app.use(
@@ -45,7 +45,7 @@ app.use(
 
 
 /**
- * Temporary codes
+ * Temporary codes --This will be replace by Database logic code
  */
 class User {
     constructor(username, password, firstName, lastName){
@@ -57,12 +57,12 @@ class User {
     }
 }
 
-
+//temporal for testing login e.g: user=001 password=001 
 var users=[
     new User(`001`,`001`,`F001`,`L001`),
 ]
 var chatRoom = {
-    roomID: uuidv4(),
+    roomID: uuidv4(), // Assing roomId
     users: []
 };
 
@@ -74,6 +74,7 @@ app.get(`/`, (req, res) => {
     res.render(`index`);
 });
 
+// Validates the Login
 app.post(`/auth`,(req, res) => {
     let username = req.body.username.trim();
     let password = req.body.password.trim();
@@ -88,9 +89,8 @@ app.post(`/auth`,(req, res) => {
     } else {
         res.render(`index`,{authError:true});
     }
-
-
 });
+
 app.get(`/chat`, (req, res) => {
     res.render(`chatroom`);
 });
@@ -98,10 +98,10 @@ app.get(`/chat`, (req, res) => {
 app.get(`/dashboard`, (req, res) => {
     res.render(`dashboard`);
 });
-/**
- * Socket.IO
- */
 
+/**
+ * Socket.IO  ---Function for signaling
+ */
 io.on('connection', function (socket) {
     
 
@@ -110,11 +110,12 @@ io.on('connection', function (socket) {
     /**
      * Chat Room IO
      */
+    // firts message from the user when clicks the call button
     socket.on('join a chat room', function () {
        socket.join(`${chatRoom.roomID}`);
        const rooms = io.of("/").adapter.rooms;
        const users = rooms.get(chatRoom.roomID);
-       console.log(users.size);
+       console.log(users.size);  //  to test how many have entered the room
 
        if (users.size < 2) {
         //get join message from the first one in the chat room
