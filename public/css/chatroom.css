@@ -1,12 +1,16 @@
 main{
-    flex-direction: column;
+    display: block;
+    margin-top: 20px;
 }
 
 #previews {
     display: flex;
-    height: 350px;
-    width: 350px;
+    flex-wrap: wrap;
     gap: 5px;
+}
+
+video{
+    height: 300px;
 }
 
 #local-video {
