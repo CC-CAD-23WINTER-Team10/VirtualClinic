@@ -4,11 +4,11 @@ import { PConnection } from "./PConnection.js";
 import { User, Status, myDiv, YesAlertBox, AlertBox } from "./User.js";
 
 export class Chatroom {
-    socket: any;
-    localStream: MediaStream;
-    connections: PConnection[] = [];
+    socket: any; //A reference to the socket IO
+    localStream: MediaStream; //A reference to the Local Video stream
+    connections: PConnection[] = []; //A collection of PeerConnection
 
-    //Elements
+    //Elements in the Chatroom Div
     setting: HTMLDivElement;
     previewContainer: HTMLDivElement;
     activeFrame: HTMLDivElement;
@@ -23,6 +23,7 @@ export class Chatroom {
 
     constructor(socket:any, chatroomDiv:HTMLDivElement){
         this.socket = socket;
+        //Pass the references of the chatroom elements into this object
         this.previewContainer = chatroomDiv.querySelector(`.preview-container`)!;
         this.activeFrame = chatroomDiv.querySelector(`.active-speaker`)!;
         this.activeVideo = this.activeFrame.querySelector(`video`)!;
@@ -33,11 +34,13 @@ export class Chatroom {
         this.selfExitButton = chatroomDiv.querySelector(`#self-exit`)!;
         this.setting = chatroomDiv.querySelector(`#setting`)!;
 
+        //set Setting button OnClick Event
         this.settingButton.addEventListener(`click`, ()=>{
             this.showSetting();
         })
     }
 
+    //Button SVGs
     readonly pinSVG:string = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
     <path d="M298.028 214.267L285.793 96H328c13.255 0 24-10.745 24-24V24c0-13.255-10.745-24-24-24
     H56C42.745 0 32 10.745 32 24v48c0 13.255 10.745 24 24 24h42.207L85.972 214.267
@@ -102,11 +105,15 @@ export class Chatroom {
     </svg>`;
     
 
+
+    /**
+     * The start point of the chatroom
+     */
     async start() {
-        let permission = await this.getLocalStream();
+        let permission = await this.getMediaPermission();
 
         if(permission){
-            
+            //delay the setting show-up
             setTimeout(()=>{this.showSetting();},1000);
 
 
@@ -120,10 +127,12 @@ export class Chatroom {
     }
 
     async showSetting(){
+        //Link elements for setting dialogue
         let audioSelector = this.setting.querySelector(`#audio-selector`) as HTMLSelectElement;
         let videoSelector = this.setting.querySelector(`#video-selector`) as HTMLSelectElement;
         let applyButton = this.setting.querySelector(`#selector-apply`) as HTMLButtonElement;
         let cancelButton = this.setting.querySelector(`#selector-cancel`) as HTMLButtonElement;
+        //retrieve the cameras and mics from the system
         let cameras = await this.getConnectedDevices('videoinput');
         let mics = await this.getConnectedDevices('audioinput');
         
@@ -133,6 +142,10 @@ export class Chatroom {
         audioSelector.innerHTML =``;
         videoSelector.innerHTML =``;
         //Generate options
+        //NOTE: IF THERE IS NO CAMARA/MIC AVAILABLE, THERE WILL BE ONE ITEM IN THE RETREIVED LIST 
+        //      WITHOUT LABEL.
+
+        //GENERATE FULL SCREEN ALERT ACCORDING TO THE NOTE ABOVE.
         if ((cameras.length == 1 && !cameras[0].label) || (mics.length == 1 && !mics[0].label)) {
             const title = `Media Device Issue`
             let message = ``;
@@ -140,12 +153,14 @@ export class Chatroom {
                 message = `You may disable the access to camara for this website or you don't have any available camara.<br>`
                 let option = document.createElement(`option`);
                 option.innerHTML = `No available camara`;
+                option.value = ``;
                 videoSelector.add(option);
             }
             if(mics.length == 1 && !mics[0].label){
                 message += `You may disable the access to microphone for this website or you don't have any available microphone.`
                 let option = document.createElement(`option`);
                 option.innerHTML = `No available microphone`;
+                option.value = ``;
                 audioSelector.add(option);
             }
             const alert = new AlertBox(message,title);
@@ -153,6 +168,7 @@ export class Chatroom {
 
         } 
 
+        //put cameras into the selection
         if (cameras) {
             for (const cam of cameras) {
                 if (cam.label) {
@@ -165,6 +181,7 @@ export class Chatroom {
             }
         }
 
+        //put mics into the selection
         if(mics){
             for (const mic of mics) {
                 if (mic.label) {
@@ -176,19 +193,48 @@ export class Chatroom {
             }
         }
 
+        //set cancel button Onclick event
         cancelButton.addEventListener(`click`,()=>{
             this.closeSetting();
-        })
+        });
 
+
+        //set apply button Onclick event
+        applyButton.addEventListener(`click`,()=>{
+            const micID = audioSelector.value || false;
+            const camID = videoSelector.value || false;
+            
+            const constrain:MediaStreamConstraints = {
+                audio: micID? {echoCancellation: true, deviceId: micID, noiseSuppression:true} : false,
+                video: camID? {deviceId:camID} : false
+            };
+
+
+            this.setLocalStream(constrain);
+
+            this.closeSetting();
+        });
+
+        //Show the setting by changing the CSS class(From display:none to flex)
         this.setting.classList.remove(`dsp-none`);
         this.setting.classList.add(`dsp-flex`); 
     }
 
+
+    /**
+     * Hide the setting by changing the CSS class(From display:flex to none)
+     */
     closeSetting(){
         this.setting.classList.remove(`dsp-flex`);
         this.setting.classList.add(`dsp-none`);
     }
 
+
+    /**
+     * Get a list of media device from the system
+     * @param type "audioinput" | "audiooutput" | "videoinput"
+     * @returns 
+     */
     async getConnectedDevices(type:MediaDeviceKind) {
         const devices = await navigator.mediaDevices.enumerateDevices();
         return devices.filter(device => device.kind === type)
@@ -206,12 +252,15 @@ export class Chatroom {
     * if permission is accepted,it will return ture;
     * if permission is denied, it will return false. 
     */
-    async getLocalStream() {
+    async getMediaPermission() {
+        const defaultConstrain = {
+            audio: {echoCancellation: true},
+            video: true
+        }
+
         try {
             this.localStream = await navigator.mediaDevices.getUserMedia({
-                audio: {'echoCancellation': true},  //Set false for single computer testing
-                //peerIdentity: ``,
-                //preferCurrentTab: true/false,
+                audio: {echoCancellation: true},
                 video: true
             })
 
@@ -224,9 +273,26 @@ export class Chatroom {
 
     }
 
+    async setLocalStream(constrain:MediaStreamConstraints){
+        this.localStream = await navigator.mediaDevices.getUserMedia(constrain);
+        this.activeVideo.srcObject = this.localStream;
+    }
+
+    activeSpeakerManager = {
+        setting:false,
+        pinedID:``,
+
+    }
 
 
 
+
+    /**
+     * Generate a Videio Preview for one remote user
+     * @param id the remote user's socket ID
+     * @param videoSource the remote video stream
+     * @returns a Div element
+     */
     createPreview(id:string, videoSource:MediaStream){
         let previewDiv = document.createElement(`div`) as myDiv;
         previewDiv.my_relation = id;
@@ -251,4 +317,96 @@ export class Chatroom {
         previewDiv.append(controlsDiv,videoCover,videoFrame)
         return previewDiv;
     }
+
+
+    socketCommunication(){
+        this.socket.on("connect", () => {
+            console.log(`CONNECTED WITH SERVER. YOUR ID: `, this.socket.id);
+        });
+        this.socket.on("disconnect", () => {
+            console.log(`DISCONNECTED WITH SERVER.`);
+        });
+        
+        this.socket.on(`You are the first one`, () => {
+            console.log(`YOU ARE THE FIRST PERSON IN THE ROOM`);
+        });
+        
+        /*
+        socket.on(`new joiner`, async (remoteID: string) => {
+            
+        
+        
+            //Connection section
+            let newConnection = new PConnection(remoteID, this.localStream, socket, newPreview);
+            await newConnection.addLocalTracks();
+            connections.push(newConnection);
+            console.log(`WAIT FOR OFFER & ICE FROM USER ${remoteID}`);
+        
+            //UI section
+            let newPreview = this.createPreview(remoteID,);
+            previewContainer.appendChild(newPreview);
+        
+        });
+        
+        socket.on(`You need to provide offer`, async (users: string[]) => {
+            const myID = socket.id;
+            const otherUsers = users.filter(u => u != myID);
+        
+            otherUsers.forEach(async user => {
+                //UI section
+                let newPreview = createVideoPreview();
+                previewContainer.appendChild(newPreview);
+        
+        
+                //Connection section
+                let newConnection = new PConnection(user, localStream, socket, newPreview);
+                await newConnection.addLocalTracks();
+                await newConnection.initACall();
+                connections.push(newConnection);
+            });
+        });
+        
+        socket.on(`new offer`, (offer: RTCSessionDescriptionInit, remoteID: string) => {
+            let connection = connections.find(c => c.id == remoteID);
+            if (connection != undefined) {
+                connection.setRemoteDescription(offer);
+            } else {
+                console.log(`CANNOT FIND CONNECTION WITH ID:${remoteID}. (socket.on(\`new offer\`))`);
+            }
+        
+        });
+        
+        socket.on(`you answer from`, async (remoteID: string, answer: RTCSessionDescriptionInit) => {
+            let connection = connections.find(c => c.id == remoteID);
+            if (connection != undefined) {
+                const remoteDesc = new RTCSessionDescription(answer);
+                await connection.peerConnection.setRemoteDescription(remoteDesc);
+                console.log(`Answer is set.`)
+            } else {
+                console.log(`CANNOT FIND CONNECTION WITH ID:${remoteID}. (socket.on(\`you answer from\`))`);
+            }
+        });
+        
+        socket.on(`icecandidate from`, async (remoteID: string, candidate: RTCIceCandidateInit) => {
+            let connection = connections.find(c => c.id == remoteID);
+            if (connection != undefined) {
+                
+                try {
+                    await connection.peerConnection.addIceCandidate(candidate);
+                    console.log(`ADDED NEW ICE FROM ${remoteID}.`)
+                } catch (e) {
+                    console.error('Error adding received ice candidate', e);
+                }
+        
+            } else {
+                console.log(`CANNOT FIND CONNECTION WITH ID:${remoteID}. (socket.on(\`icecandidate from\`))`);
+            }
+        
+        });
+
+         */
+    }
+
+
+    
 }

@@ -42,7 +42,7 @@ let expensionButton = shrinkableBox.querySelector(`.expension-button`) as HTMLBu
 
 //SizeObservers
 let bodySizeObserver = new ResizeObserver(e=>{
-    //body height changes then the main height changes 
+    //<body> height changes then the <main> height changes 
     const entry = e[0];
     const heightOfBody = entry.borderBoxSize[0].blockSize;
     const heightOfHeader = header?.offsetHeight;
@@ -51,7 +51,7 @@ let bodySizeObserver = new ResizeObserver(e=>{
     main!.style.height = (heightOfBody-(heightOfFootet?? 0) -(heightOfHeader?? 0)) + `px`;
 })
 let mainSizeObserver = new ResizeObserver((e) => {
-    //main width changes then the chatroom width changes
+    //<main> width changes then the #chatroom width changes
     const entry = e[0];
     const widthOfMain = entry.contentBoxSize[0].inlineSize;//width without padding and border
     const widthOfShrinkable = shrinkableBox.offsetWidth;
