@@ -1,3 +1,8 @@
+<% if(username == 'undefined'){
+    var username = ``;
+} %>
+
+
 <%- include('includes/header.ejs') %>
     <link rel="stylesheet" href="/css/dashboard.css">
     <main>
@@ -116,6 +121,9 @@
                 <video autoplay playsinline></video>
             </div>
         </div>
+
+
+        <input  class="dsp-none" type="password" name="" id="username" value="<%=username%>">
     </main>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/dashboard.js" type="module"></script>

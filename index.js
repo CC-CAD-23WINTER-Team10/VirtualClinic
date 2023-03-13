@@ -10,9 +10,10 @@ const fs = require('fs');  // file system
 const { v4: uuidv4 } = require("uuid");  // generate room id
 const { Server } = require("socket.io"); // signaling among peers
 const session = require(`express-session`); // Login + sessions
+const Database = require('./Database.js') //MongoDB
 
 //Localhost Determination
-const localhost = false; //Set to true when run on local host
+const localhost = true; //Set to true when run on local host
 // Create a service (the app object is just a callback).
 const app = express();
 // Create an HTTP service.
@@ -25,6 +26,10 @@ const credentials = localhost? {} : {
 const serverHTTPS = localhost? {} : https.createServer(credentials,app); // If localhost is true then empty object, if not then create a HTTPS object with its credentials
 //create Socket IO
 const io = new Server(localhost? serverHTTP : serverHTTPS);
+//database
+const db = new Database();
+
+
 //Set Middlewares
 if(!localhost) {
     app.use(requireHTTPS); //If not running localhost then app is force to use HTTPS
@@ -48,6 +53,7 @@ app.use(
  * Temporary codes --This will be replace by Database logic code
  */
 class User {
+    lastSocketID;
     constructor(username, password, firstName, lastName){
         this.id = uuidv4();
         this.username = username;
@@ -57,10 +63,21 @@ class User {
     }
 }
 
+class Chatroom {
+    roomID = uuidv4();
+    users = [];
+    startTime;
+    constructor(startTime){
+        this.startTime = startTime;
+    }
+}
+
 //temporal for testing login e.g: user=001 password=001 
 var users=[
     new User(`001`,`001`,`F001`,`L001`),
 ]
+
+var chatrooms = [];
 var chatRoom = {
     roomID: uuidv4(), // Assing roomId
     users: []
@@ -75,17 +92,17 @@ app.get(`/`, (req, res) => {
 });
 
 // Validates the Login
-app.post(`/auth`,(req, res) => {
+app.post(`/auth`,async(req, res) => {
     let username = req.body.username.trim();
     let password = req.body.password.trim();
-    let existingUser = users.filter(u => u.username == username)[0];
+    let existingUser = await db.getOneUserAuth(username, password);
+   
     if (existingUser) {
-        if(existingUser.password == password){
             //Log in 
-            res.redirect(`dashboard`);
-        }else{
-            res.render(`index`,{authError:true});
-        }
+            req.session.username = username; //save username in session
+            req.session.loggedIn = true;
+            res.render(`dashboard`,{username});
+        
     } else {
         res.render(`index`,{authError:true});
     }
@@ -96,20 +113,54 @@ app.get(`/chat`, (req, res) => {
 });
 
 app.get(`/dashboard`, (req, res) => {
-    res.render(`dashboard`);
+
+    if(req.session.loggedIn){
+        let username = req.session.username;
+        res.render(`dashboard`, {username});
+    }else {
+        res.redirect(`/`);
+    }
+    
 });
 
 /**
  * Socket.IO  ---Function for signaling
  */
 io.on('connection', function (socket) {
-    
-
+    /**
+     * Dashboard IO
+     */
+    socket.on(`Hi`,(username)=>{
+        console.log(username, 'with socket ID: ', socket.id);
+    });
 
 
     /**
      * Chat Room IO
      */
+
+    //when someone clicks the call/invite button, 
+    //this message with the invited person's socket id will be sent to the server.
+    socket.on(`invite`,(id)=>{
+        //then the server will check if the sender is in a room
+        //if not, assgin a room to the sender
+
+        console.log(socket.id, ` is in `, socket.rooms);
+        let newChatroom = new Chatroom(Date.now());
+        if(socket.rooms.size == 1){
+            
+            //newChatroom.users.push();
+            socket.join(newChatroom.roomID);
+            chatrooms.push(newChatroom);
+        } else {
+
+        }
+        
+        io.to(id).emit(`invitation from`, socket.id);
+
+    });
+
+
     // firts message from the user when clicks the call button
     socket.on('join a chat room', function () {
        socket.join(`${chatRoom.roomID}`);

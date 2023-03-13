@@ -328,7 +328,19 @@ function hidechatroom() {
  */
 socket.on("connect", () => {
     console.log(`CONNECTED WITH SERVER. YOUR ID: `, socket.id);
+    const username = (document.querySelector(`#username`) as HTMLInputElement).value;
+    socket.emit(`Hi`, username);//tell the server who I'm(username) with that socketID to update the user info
 });
+
 socket.on("disconnect", () => {
     console.log(`DISCONNECTED WITH SERVER.`);
 });
+
+socket.on("new call from",(remoteID:string, name: string)=>{
+    console.log(`GET A CALL FROM ${remoteID}.`);
+    let message = `${name} is calling you. Do you want to accept?`
+    let yesButtonEvent = ()=>{
+
+    }
+    //let newFullScreenAlert = new YesAlertBox()
+})

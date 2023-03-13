@@ -4,3 +4,5 @@ Ref.
 3. https://www.youtube.com/watch?v=LzJQDhiGAr4
 4. https://codepen.io/soufiane-khalfaoui-hassani/pen/LYpPWda
 5. https://codepen.io/lonekorean/pen/OJQPmpm
+6. https://www.mongodb.com/blog/post/password-authentication-with-mongoose-part-1
+7. https://mongoosejs.com/docs/queries.html
