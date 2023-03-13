@@ -18,7 +18,7 @@
    ```
    git clone https://github.com/CC-CAD-23WINTER-Team10/VirtualClinic.git .
    ```    
-+ STEP 4: Edit the index.js(in project root directory), on line 14:
++ STEP 4: Edit the index.js(in project root directory), on line 15:
    ```javascript
    const localhost = true;
    ```
