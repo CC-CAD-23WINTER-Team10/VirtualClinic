@@ -36,8 +36,8 @@ export class PConnection {
         // Listen to enable the streaming video and audio on UI
         this.peerConnection.addEventListener('track', async (event) => {
             console.log(`Get TRACK INFO FROM PEER CONNECTION.`);
-            const [remoteStream] = event.streams;
-            this.remoteVideoFrame.srcObject = remoteStream;
+            [this.remoteStream] = event.streams;
+            this.remoteVideoFrame.srcObject = this.remoteStream;
             console.log(`Set Remote Video Stream`);
         });
 
