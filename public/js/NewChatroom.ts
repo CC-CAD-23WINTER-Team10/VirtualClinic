@@ -1,5 +1,5 @@
 //@ts-ignore
-import { PConnection } from "./PConnection.js";
+import { PConnection } from "./NewPConnection.js";
 //@ts-ignore
 import { User, Status, myDiv, YesAlertBox, AlertBox } from "./User.js";
 
@@ -207,6 +207,7 @@ export class Chatroom {
 
         //set cancel button Onclick event
         cancelButton.addEventListener(`click`,()=>{
+            this.activeVideo.srcObject = previousActiveSpeaker;
             this.closeSetting();
         });
 
@@ -223,7 +224,7 @@ export class Chatroom {
 
 
             this.setLocalStream(constrain);
-
+            this.activeVideo.srcObject = previousActiveSpeaker;
             this.closeSetting();
         });
 
@@ -368,20 +369,22 @@ export class Chatroom {
             console.log(`YOU ARE THE FIRST PERSON IN THE ROOM`);
         });
         
-        /*
+        
         this.socket.on(`new joiner`, async (remoteID: string) => {
-            
-        
-        
             //Connection section
-            let newConnection = new PConnection(remoteID, this.localStream, socket, newPreview);
+            let newConnection = new PConnection(remoteID, this.localStream, this.socket);
             await newConnection.addLocalTracks();
-            connections.push(newConnection);
+            this.connections.push(newConnection);
             console.log(`WAIT FOR OFFER & ICE FROM USER ${remoteID}`);
         
             //UI section
-            let newPreview = this.createPreview(remoteID,);
-            previewContainer.appendChild(newPreview);
+            let newPreview = this.createPreview(remoteID,newConnection.remoteStream);
+            if(this.previewContainer.children.length < 1){
+                this.previewContainer.classList.remove(`dsp-none`);
+                this.previewContainer.classList.add(`dsp-flex`);
+            }
+            this.previewContainer.appendChild(newPreview);
+
         
         });
         
@@ -390,21 +393,21 @@ export class Chatroom {
             const otherUsers = users.filter(u => u != myID);
         
             otherUsers.forEach(async user => {
-                //UI section
-                let newPreview = createVideoPreview();
-                previewContainer.appendChild(newPreview);
-        
-        
                 //Connection section
-                let newConnection = new PConnection(user, localStream, socket, newPreview);
+                let newConnection = new PConnection(user, this.localStream, this.socket);
                 await newConnection.addLocalTracks();
                 await newConnection.initACall();
-                connections.push(newConnection);
+                this.connections.push(newConnection);
+
+
+                //UI section
+                let newPreview = this.createPreview(user,newConnection.remoteStream);
+                this.previewContainer.appendChild(newPreview);
             });
         });
         
         socket.on(`new offer`, (offer: RTCSessionDescriptionInit, remoteID: string) => {
-            let connection = connections.find(c => c.id == remoteID);
+            let connection = this.connections.find(c => c.id == remoteID);
             if (connection != undefined) {
                 connection.setRemoteDescription(offer);
             } else {
@@ -414,7 +417,7 @@ export class Chatroom {
         });
         
         socket.on(`you answer from`, async (remoteID: string, answer: RTCSessionDescriptionInit) => {
-            let connection = connections.find(c => c.id == remoteID);
+            let connection = this.connections.find(c => c.id == remoteID);
             if (connection != undefined) {
                 const remoteDesc = new RTCSessionDescription(answer);
                 await connection.peerConnection.setRemoteDescription(remoteDesc);
@@ -425,7 +428,7 @@ export class Chatroom {
         });
         
         socket.on(`icecandidate from`, async (remoteID: string, candidate: RTCIceCandidateInit) => {
-            let connection = connections.find(c => c.id == remoteID);
+            let connection = this.connections.find(c => c.id == remoteID);
             if (connection != undefined) {
                 
                 try {
@@ -441,7 +444,7 @@ export class Chatroom {
         
         });
 
-         */
+         
     }
 
 
