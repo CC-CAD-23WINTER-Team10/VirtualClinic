@@ -7,11 +7,13 @@ export class Chatroom {
     socket: any; //A reference to the socket IO
     localStream: MediaStream; //A reference to the Local Video stream
     connections: PConnection[] = []; //A collection of PeerConnection
+    muted: boolean;
+    camOff: boolean;
 
     //Elements in the Chatroom Div
     setting: HTMLDivElement;
     previewContainer: HTMLDivElement;
-    activeFrame: HTMLDivElement;
+    activeFrame: myDiv;
     activeVideo: HTMLVideoElement;
     settingButton: HTMLButtonElement;
     screenButton: HTMLButtonElement;
@@ -126,7 +128,7 @@ export class Chatroom {
         
     }
 
-    async showSetting(){
+    private async showSetting(){
         //Link elements for setting dialogue
         let audioSelector = this.setting.querySelector(`#audio-selector`) as HTMLSelectElement;
         let videoSelector = this.setting.querySelector(`#video-selector`) as HTMLSelectElement;
@@ -136,7 +138,9 @@ export class Chatroom {
         let cameras = await this.getConnectedDevices('videoinput');
         let mics = await this.getConnectedDevices('audioinput');
         
-        this.activeVideo.srcObject = this.localStream;
+        const previousActiveSpeaker = this.activeVideo.srcObject;
+
+        this.setActiveSpeaker(this.socket.id);//put your cam on the speaker frame to preview
 
         //clear options
         audioSelector.innerHTML =``;
@@ -172,9 +176,13 @@ export class Chatroom {
         if (cameras) {
             for (const cam of cameras) {
                 if (cam.label) {
+                    const currentUsedCam = this.localStream.getVideoTracks()[0].label;
                     let option = document.createElement(`option`);
                     option.value = cam.deviceId;
                     option.innerHTML = cam.label;
+                    if(cam.label == currentUsedCam){
+                        option.setAttribute(`selected`,``);
+                    }
                     videoSelector.add(option);
                 }
 
@@ -185,9 +193,13 @@ export class Chatroom {
         if(mics){
             for (const mic of mics) {
                 if (mic.label) {
+                    const currentUsedMic = this.localStream.getAudioTracks()[0].label;
                     let option = document.createElement(`option`);
                     option.value = mic.deviceId;
                     option.innerHTML = mic.label;
+                    if(mic.label == currentUsedMic){
+                        option.setAttribute(`selected`,``);
+                    }
                     audioSelector.add(option);
                 }
             }
@@ -215,6 +227,20 @@ export class Chatroom {
             this.closeSetting();
         });
 
+        // set video option changes for preview
+        videoSelector.onchange = () =>{
+            const micID = audioSelector.value || false;
+            const camID = videoSelector.value || false;
+            
+            const constrain:MediaStreamConstraints = {
+                audio: micID? {echoCancellation: true, deviceId: micID, noiseSuppression:true} : false,
+                video: camID? {deviceId:camID} : false
+            };
+
+            this.previewStream(constrain);
+        }
+
+
         //Show the setting by changing the CSS class(From display:none to flex)
         this.setting.classList.remove(`dsp-none`);
         this.setting.classList.add(`dsp-flex`); 
@@ -224,7 +250,7 @@ export class Chatroom {
     /**
      * Hide the setting by changing the CSS class(From display:flex to none)
      */
-    closeSetting(){
+    private closeSetting(){
         this.setting.classList.remove(`dsp-flex`);
         this.setting.classList.add(`dsp-none`);
     }
@@ -235,7 +261,7 @@ export class Chatroom {
      * @param type "audioinput" | "audiooutput" | "videoinput"
      * @returns 
      */
-    async getConnectedDevices(type:MediaDeviceKind) {
+    private async getConnectedDevices(type:MediaDeviceKind) {
         const devices = await navigator.mediaDevices.enumerateDevices();
         return devices.filter(device => device.kind === type)
     }
@@ -259,11 +285,7 @@ export class Chatroom {
         }
 
         try {
-            this.localStream = await navigator.mediaDevices.getUserMedia({
-                audio: {echoCancellation: true},
-                video: true
-            })
-
+            this.localStream = await navigator.mediaDevices.getUserMedia(defaultConstrain);
             this.activeVideo.srcObject = this.localStream;
             return true;
         } catch (error) {
@@ -273,15 +295,30 @@ export class Chatroom {
 
     }
 
-    async setLocalStream(constrain:MediaStreamConstraints){
-        this.localStream = await navigator.mediaDevices.getUserMedia(constrain);
-        this.activeVideo.srcObject = this.localStream;
+
+
+    private async previewStream(constrain:MediaStreamConstraints){
+        const mediaStream = await navigator.mediaDevices.getUserMedia(constrain);
+        this.activeVideo.srcObject = mediaStream;
     }
 
-    activeSpeakerManager = {
-        setting:false,
-        pinedID:``,
+    private async setLocalStream(constrain:MediaStreamConstraints){
+        this.localStream = await navigator.mediaDevices.getUserMedia(constrain);
+    }
+   
+    private setActiveSpeaker(id:string){
+        this.activeFrame.my_relation = id;
 
+        if(id == this.socket.id){
+            //If the active speaker media is from user's own cam and mic, always mute the mic
+            //to reduce echo.
+            this.activeVideo.setAttribute(`muted`,``);
+            this.activeVideo.srcObject = this.localStream;
+        }else {
+            const connection = this.connections.find(c => c.id == id);
+            this.activeVideo.srcObject = connection.remoteStream;
+            this.activeVideo.removeAttribute(`muted`);
+        }
     }
 
 
@@ -332,7 +369,7 @@ export class Chatroom {
         });
         
         /*
-        socket.on(`new joiner`, async (remoteID: string) => {
+        this.socket.on(`new joiner`, async (remoteID: string) => {
             
         
         
@@ -348,7 +385,7 @@ export class Chatroom {
         
         });
         
-        socket.on(`You need to provide offer`, async (users: string[]) => {
+        this.socket.on(`You need to provide offer`, async (users: string[]) => {
             const myID = socket.id;
             const otherUsers = users.filter(u => u != myID);
         
