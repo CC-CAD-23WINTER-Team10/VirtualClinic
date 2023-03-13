@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev-nm": "nodemon index.js",
-    "dev": "tsc-watch --onSuccess \"nodemon dist/index.js\"",
+    "dev": "tsc && nodemon index.js",
     "d": "tsc && nodemon index.js",
     "start": "tsc && node index.js"
   },
@@ -25,13 +25,11 @@
     "express": "^4.18.2",
     "express-session": "^1.17.3",
     "mongoose": "^7.0.1",
-    "peer": "^0.6.1",
     "socket.io": "^4.6.0",
     "typescript": "^4.9.5",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.20",
-    "tsc-watch": "^6.0.0"
+    "nodemon": "^2.0.20"
   }
 }
