@@ -12,7 +12,7 @@ const { Server } = require("socket.io"); // signaling among peers
 const session = require(`express-session`); // Login + sessions
 
 //Localhost Determination
-const localhost = true; //Set to true when run on local host
+const localhost = false; //Set to true when run on local host
 // Create a service (the app object is just a callback).
 const app = express();
 // Create an HTTP service.
@@ -20,9 +20,9 @@ const serverHTTP = http.createServer(app);
 // Create an HTTPS service identical to the HTTP service.
 const credentials = localhost? {} : {
     key: fs.readFileSync('keys/ECC-privkey.pem'),  // key for HTTPS 
-    cert: fs.readFileSync('keys/ECC-cert.pem')     // Certidicate for the HTTPS
+    cert: fs.readFileSync('keys/ECC-cert.pem')     // Certificate for the HTTPS
   };
-const serverHTTPS = localhost? {} : https.createServer(credentials,app); // If localhost is true then empty object, if not then create a HTTPS object with its credenttials
+const serverHTTPS = localhost? {} : https.createServer(credentials,app); // If localhost is true then empty object, if not then create a HTTPS object with its credentials
 //create Socket IO
 const io = new Server(localhost? serverHTTP : serverHTTPS);
 //Set Middlewares
