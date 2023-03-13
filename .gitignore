@@ -109,3 +109,4 @@ keys/
 # typescript-complied js files
 public/js/*.js
 public/js/*.js.map
+Database.js*
