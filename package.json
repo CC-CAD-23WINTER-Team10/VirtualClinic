@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev-nm": "nodemon index.js",
-    "dev": "tsc && nodemon index.js",
+    "dev": "tsc-watch --onSuccess \"nodemon dist/index.js\"",
     "d": "tsc && nodemon index.js",
     "start": "tsc && node index.js"
   },
@@ -30,6 +30,7 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.20"
+    "nodemon": "^2.0.20",
+    "tsc-watch": "^6.0.0"
   }
 }
