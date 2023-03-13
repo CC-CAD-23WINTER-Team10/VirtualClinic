@@ -18,15 +18,19 @@
    ```
    git clone https://github.com/CC-CAD-23WINTER-Team10/VirtualClinic.git .
    ```    
-+ STEP 4: Edit the index.js(in project root directory), on line 15:
++ STEP 4: Edit the index.js(in project root directory), on line 16:
    ```javascript
    const localhost = true;
    ```
-+ STEP 5: run this command in the terminal:
++ STEP 5: Customise your MongoDB Url by changing the string(Same file as Step.4, on line 30):
+   ```javascript
+   const db = new Database(`mongodb://127.0.0.1:27017/virtual-clinic`);
+   ```
++ STEP 6: run this command in the terminal:
    ```
    npm install
    ```
-+ STEP 6: After saving the index.js, there are 4 options for you to run on terminal:
++ STEP 7: After saving the index.js, there are 4 options for you to run on terminal:
 
    1. Only test the exsiting codes, without further code change[^1]
       ```

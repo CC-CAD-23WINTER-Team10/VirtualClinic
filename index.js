@@ -27,7 +27,7 @@ const serverHTTPS = localhost? {} : https.createServer(credentials,app); // If l
 //create Socket IO
 const io = new Server(localhost? serverHTTP : serverHTTPS);
 //database
-const db = new Database();
+const db = new Database(`mongodb://127.0.0.1:27017/virtual-clinic`);// Customise your MongoDB url here
 
 
 //Set Middlewares
@@ -132,12 +132,12 @@ io.on('connection', function (socket) {
      */
     socket.on(`Hi`,(username)=>{
         console.log(username, 'with socket ID: ', socket.id);
+        db.updateSocketID(socket.id,username);
     });
 
 
-    /**
-     * Chat Room IO
-     */
+
+
 
     //when someone clicks the call/invite button, 
     //this message with the invited person's socket id will be sent to the server.
@@ -160,7 +160,9 @@ io.on('connection', function (socket) {
 
     });
 
-
+    /**
+     * Chat Room IO
+     */
     // firts message from the user when clicks the call button
     socket.on('join a chat room', function () {
        socket.join(`${chatRoom.roomID}`);

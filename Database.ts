@@ -3,8 +3,8 @@
 const {mongoose, Schema, model} = require('mongoose');
 
 module.exports = class Database {
-    constructor(){
-        this.connect();
+    constructor(url:string){
+        this.connect(url);
         /*
         setTimeout(async()=>{
             console.log( await this.getAllUser());
@@ -29,7 +29,7 @@ module.exports = class Database {
         email: String,
         password: {type:String, required: true},
         kind: String,
-        lastSocketID: String
+        lastSocketID: {type:String, default: ``}
     },{
         virtuals: {
             fullName: {
@@ -42,11 +42,12 @@ module.exports = class Database {
 
     User = model('User', this.userSchema);
 
-    async connect(){
+    async connect(url:string){
         try{
             console.log(`DB Connecting...`);
             //await mongoose.connect(`mongodb://mongo1:27017/virtual-clinic`);
-            await mongoose.connect(`mongodb://127.0.0.1:27017/virtual-clinic`);
+            //await mongoose.connect(`mongodb://127.0.0.1:27017/virtual-clinic`);
+            await mongoose.connect(url);
             console.log(`DB Connection OK`);
         } catch(err) { 
             console.log(`DB ERROR:`);
@@ -55,12 +56,20 @@ module.exports = class Database {
     }
 
     async getAllUser(){
-        const users = await this.User.find({}).select(`firstName lastName`);
+        const users = await this.User.find({}).select(`firstName lastName lastSocketID`);
         return users;
     }
 
     async getOneUserAuth(username:string,password:string){
-        const user = await this.User.findOne({username:username,password:password}).select(`firstName lastName`);
+        const user = await this.User.findOne({username:username,password:password}).select(`firstName lastName lastSocketID`);
         return user;
+    }
+
+
+    async updateSocketID(id:string,username:string){
+        let user = await this.User.findOne({username:username});
+        user.lastSocketID = id;
+        user.save();
+        //console.log( await this.getAllUser());
     }
 }
