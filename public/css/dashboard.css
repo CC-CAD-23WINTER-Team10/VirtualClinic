@@ -140,7 +140,7 @@ main {
     padding: 5px;
     border: none;
     border-radius: 5px;
-
+    min-width: 300px;
 }
 
 .search-bar .icon {
