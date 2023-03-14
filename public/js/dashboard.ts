@@ -1,5 +1,6 @@
 //@ts-ignore
-import { User, Status, myDiv, YesAlertBox } from "./User.js";
+import { User, Status, myDiv,  } from "./Modules.js";
+import { YesAlertBox } from "./AlertBox.js"
 //@ts-ignore
 import { Chatroom } from "./NewChatroom.js";
 /* 
@@ -97,44 +98,6 @@ chatroomResizeObserver.observe(chatroomDiv);
 userListResizeObserver.observe(userList);
 shrinkableResizeObserver.observe(shrinkableBox);
 
-
-/**
- * Test Code
- */
-var userA = new User(`00001`, `pexels-đỗ-ngọc-tú-quyên-1520760.jpg`, `Divid`, `Anson`,`Nurse`, Status.Available);
-var userB = new User(`00002`, `pexels-oluwatoki-sayf-alfattah-12599059.jpg`, `Anson`, `Mama`,`Doctor`, Status.Leave);
-var userC = new User(`00003`, `pexels-sound-on-3394658.jpg`, `Johnson`, `Friday`,`Client`, Status.Busy);
-var userD = new User(`00004`, `pexels-teodora-popa-photographer-15502152.jpg`, `Kate`, `May`,`Nurse`, Status.Offline);
-var userE = new User(`00005`, `pexels-yuri-manei-3190334.jpg`, `Alexandra`, `Alominakoly`,`Nurse`, Status.Available);
-users.push(userA, userB, userC, userD, userE);
-
-users.forEach(u => {
-    let userDiv = createUserElement(u.id, u.img, u.name, u.status);
-
-    userDiv.addEventListener(`click`, (e) => {
-        let div = e.target as myDiv;
-        if (div.my_relation == undefined) {
-            div = div.parentElement as myDiv;
-        }
-
-        let detail = createDetailElement(u);
-        shrinkableBox.append(detail);
-
-        setTimeout(() => {
-            document.addEventListener(`click`, detailClickListener)
-        }, 10);
-
-    })
-
-    userList.append(userDiv);
-
-});
-
-/**
- * End of Test Code
- */
-
-
 /**
  * Create a Div that contains user protrait, name, and status bar.
  * @param id The id of the user.
@@ -177,8 +140,8 @@ function createUserElement(id: string, imgFile: string, name: string, status: St
  * @returns 
  */
 function createDetailElement(user:User) {
-    let id= user.id; 
-    let name = user.name; 
+    let id= user.lastSocketID; 
+    let name = user.firstName + ` ` + user.lastName;
     let title = user.title; 
     let department = user.department;
     let img = user.img;
@@ -335,6 +298,38 @@ socket.on("connect", () => {
 socket.on("disconnect", () => {
     console.log(`DISCONNECTED WITH SERVER.`);
 });
+
+
+socket.on(`new user list`,(users:Array<User>)=>{
+    users = users.filter(u=> u.lastSocketID != socket.id);//Remove the current user from the array.
+    //console.log(users);
+    userList.innerHTML = ``;
+
+    users.forEach(u => {
+
+        let fullName = u.firstName + ` ` + u.lastName;
+        let userDiv = createUserElement(u.lastSocketID, u.img, fullName, u.status);
+    
+        userDiv.addEventListener(`click`, (e) => {
+            let div = e.target as myDiv;
+            if (div.my_relation == undefined) {
+                div = div.parentElement as myDiv;
+            }
+    
+            let detail = createDetailElement(u);
+            shrinkableBox.append(detail);
+    
+            setTimeout(() => {
+                document.addEventListener(`click`, detailClickListener)
+            }, 10);
+    
+        })
+    
+        userList.append(userDiv);
+    
+    });
+
+})
 
 socket.on("new call from",(remoteID:string, name: string)=>{
     console.log(`GET A CALL FROM ${remoteID}.`);

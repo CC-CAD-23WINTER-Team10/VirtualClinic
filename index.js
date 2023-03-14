@@ -28,7 +28,8 @@ const serverHTTPS = localhost? {} : https.createServer(credentials,app); // If l
 const io = new Server(localhost? serverHTTP : serverHTTPS);
 //database
 const db = new Database(`mongodb://127.0.0.1:27017/virtual-clinic`);// Customise your MongoDB url here
-
+var activePhysicians = [];//the active user array for the dashboard user list
+var activePatients = [];
 
 //Set Middlewares
 if(!localhost) {
@@ -52,16 +53,7 @@ app.use(
 /**
  * Temporary codes --This will be replace by Database logic code
  */
-class User {
-    lastSocketID;
-    constructor(username, password, firstName, lastName){
-        this.id = uuidv4();
-        this.username = username;
-        this.password = password;
-        this.firstName = firstName;
-        this.lastName = lastName;
-    }
-}
+
 
 class Chatroom {
     roomID = uuidv4();
@@ -72,10 +64,6 @@ class Chatroom {
     }
 }
 
-//temporal for testing login e.g: user=001 password=001 
-var users=[
-    new User(`001`,`001`,`F001`,`L001`),
-]
 
 var chatrooms = [];
 var chatRoom = {
@@ -93,11 +81,11 @@ app.get(`/`, (req, res) => {
 
 // Validates the Login
 app.post(`/auth`,async(req, res) => {
-    let username = req.body.username.trim();
-    let password = req.body.password.trim();
-    let existingUser = await db.getOneUserAuth(username, password);
+    let username = req.body.username?.trim();
+    let password = req.body.password?.trim();
+    let validated = await db.getAuth(username, password);
    
-    if (existingUser) {
+    if (validated) {
             //Log in 
             req.session.username = username; //save username in session
             req.session.loggedIn = true;
@@ -126,13 +114,56 @@ app.get(`/dashboard`, (req, res) => {
 /**
  * Socket.IO  ---Function for signaling
  */
-io.on('connection', function (socket) {
+io.on('connection', function (socket) {  
     /**
      * Dashboard IO
      */
-    socket.on(`Hi`,(username)=>{
-        console.log(username, 'with socket ID: ', socket.id);
-        db.updateSocketID(socket.id,username);
+    socket.on("disconnecting", () => {
+        
+    });
+
+    //Response when one user disconneting with the server
+    socket.on("disconnect", () => {
+        console.log(`REMOVING ${socket.id} FROM ACTIVE USER ARRAY`);
+        console.log(`patient?:`,activePatients.filter( p => p.lastSocketID == socket.id));
+        console.log(`physician?:`,activePhysicians.filter( p => p.lastSocketID == socket.id));
+        activePatients = activePatients.filter( p => p.lastSocketID != socket.id);
+        activePhysicians = activePhysicians.filter( p => p.lastSocketID != socket.id);
+        
+        sendNewListToPatients();
+        sendNewListToPhysicians(); //sent new list to all physicians
+
+        console.log(`REMOVED ${socket.id} FROM ACTIVE USER ARRAY`);
+        console.log(`After Removal:`,activePatients.concat(activePhysicians));
+    });
+
+
+
+    //The first message sent to the server when open Dashboard
+    socket.on(`Hi`,async(username)=>{
+        
+        await db.updateSocketID(socket.id,username);//update the socket id in database so that we can track who is id's owner
+
+        let newActiveUser = await db.getOneUser(username);//fetch the data of this user in the database (`firstName lastName lastSocketID kind img title department`)
+        
+        newActiveUser.status = Status.Available;//add the status property to the user, new connected user will be available by default
+        
+        if(db.isPhysician(username)){
+            //check if this user is physician, so that we can boardcast the new user list according to their role
+            //the patient should not be able to call other patients
+            await socket.join(`PhysicianRoom`);
+            activePhysicians.push(newActiveUser);//push the new active user to the active user array with the data from the database
+            sendNewListToPatients()//Only when new physician is online, new list will be sent
+        } else {
+            await socket.join(`PatientRoom`);
+            activePatients.push(newActiveUser);//push the new active user to the active user array with the data from the database
+        }
+
+        sendNewListToPhysicians();//any new online user, new list will be sent.
+
+
+        console.log(`Hi! `,activePatients.concat(activePhysicians));
+
     });
 
 
@@ -159,6 +190,8 @@ io.on('connection', function (socket) {
         io.to(id).emit(`invitation from`, socket.id);
 
     });
+
+
 
     /**
      * Chat Room IO
@@ -232,3 +265,22 @@ function requireHTTPS(req, res, next) {
     }
     next();
   }
+
+
+function sendNewListToPatients() {
+    io.in(`PatientRoom`).emit(`new user list`, activePhysicians);
+}
+
+function sendNewListToPhysicians() {
+    const allActiveUser = activePhysicians.concat(activePatients); //prepare this to send to all physicians but not patients
+    io.in("PhysicianRoom").emit(`new user list`, allActiveUser);//any new online user, new list will be sent.
+}
+
+//The enum of the Status of a user
+var Status;
+(function (Status) {
+    Status["Available"] = "greenyellow";
+    Status["Leave"] = "yellow";
+    Status["Busy"] = "red";
+    Status["Offline"] = "grey";
+})(Status || (Status = {}));
