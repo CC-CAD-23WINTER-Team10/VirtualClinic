@@ -15,6 +15,13 @@
     position: relative;
 }
 
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus{
+    background: transparent!important;
+    -webkit-text-fill-color: rgb(255, 255, 255);
+    transition: background-color 500000s ease-in-out 0s;
+}
 .box .input-box input {
     width: 100%;
     padding: 10px 0;
@@ -22,10 +29,12 @@
     color: #fff;
     margin-bottom: 30px;
     border: none;
+    border-radius: 0;
     border-bottom: 1px solid #fff;
     outline: none;
     background: transparent;
 }
+
 
 .box .input-box label {
     position: absolute;
