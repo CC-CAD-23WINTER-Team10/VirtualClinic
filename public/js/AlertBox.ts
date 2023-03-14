@@ -1,34 +1,7 @@
-export class User {
-    id: string;
-    img: string;
-    firstName: string;
-    lastName: string;
-    status: Status;
-    name: string;
-    title: string;
-    department: string;
-    constructor(id: string, img: string, firstName: string, lastName: string, title: string, status: Status) {
-        this.id = id;
-        this.img = img;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.title = title;
-        this.status = status;
-        this.name = this.firstName + ` ` + this.lastName;
-    }
-}
 
-export enum Status {
-    Available = `greenyellow`,
-    Leave = `yellow`,
-    Busy = `red`,
-    Offline = `grey`
-}
-
-export interface myDiv extends HTMLDivElement {
-    my_relation: string;
-}
-
+/**
+ * Full Screen Alert
+ */
 export class AlertBox{
     box :HTMLDivElement = document.createElement(`div`);
     titleDiv: HTMLDivElement = document.createElement(`div`);
@@ -90,7 +63,7 @@ export class AlertBox{
         this.buttonDiv.append(this.dismissButton);
 
     }
-
+    /*
     html: string = `    
     <div class="box alert">
         <div class="alert-title">
@@ -104,7 +77,7 @@ export class AlertBox{
             <button>Dismiss</button>
         </div>
     </div>`;
-
+    */
     show(){
         document.body.append(this.box);
     }
@@ -117,13 +90,19 @@ export class AlertBox{
 
 }
 
+
+/**
+ * Button in the full screen alert
+ */
 interface AlertButton {
     text:string;
     clickListener: (this: GlobalEventHandlers, ev: HTMLElementEventMap[`click`]) => any;
 }
 
 
-
+/**
+ * Full screen alert with a default Yes Button
+ */
 export class YesAlertBox extends AlertBox {
 
     constructor(message:string,yesButtonListener:((this: GlobalEventHandlers, ev: HTMLElementEventMap[`click`]) => any),title?:string){
