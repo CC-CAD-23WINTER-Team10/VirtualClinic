@@ -1,11 +1,12 @@
 {
     "compilerOptions": {
-        "target": "ES2020",
-        //"module": "commonjs",
+        "target": "ES6",
+        //"module": "CommonJS",
         "preserveConstEnums": true,
         "sourceMap": true,
         "noImplicitAny": true,
         "removeComments": true,
+        //"esModuleInterop" :true,
     },
     "watchOptions": {
         "excludeDirectories": ["**/node_modules"],
