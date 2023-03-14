@@ -1,7 +1,9 @@
 //@ts-ignore
 import { PConnection } from "./NewPConnection.js";
 //@ts-ignore
-import { User, Status, myDiv, YesAlertBox, AlertBox } from "./User.js";
+import { User, Status, myDiv  } from "./Modules.js";
+//@ts-ignore
+import { YesAlertBox, AlertBox } from "./AlertBox.js"
 
 export class Chatroom {
     socket: any; //A reference to the socket IO
@@ -389,7 +391,7 @@ export class Chatroom {
         });
         
         this.socket.on(`You need to provide offer`, async (users: string[]) => {
-            const myID = socket.id;
+            const myID = this.socket.id;
             const otherUsers = users.filter(u => u != myID);
         
             otherUsers.forEach(async user => {
@@ -406,7 +408,7 @@ export class Chatroom {
             });
         });
         
-        socket.on(`new offer`, (offer: RTCSessionDescriptionInit, remoteID: string) => {
+        this.socket.on(`new offer`, (offer: RTCSessionDescriptionInit, remoteID: string) => {
             let connection = this.connections.find(c => c.id == remoteID);
             if (connection != undefined) {
                 connection.setRemoteDescription(offer);
@@ -416,7 +418,7 @@ export class Chatroom {
         
         });
         
-        socket.on(`you answer from`, async (remoteID: string, answer: RTCSessionDescriptionInit) => {
+        this.socket.on(`you answer from`, async (remoteID: string, answer: RTCSessionDescriptionInit) => {
             let connection = this.connections.find(c => c.id == remoteID);
             if (connection != undefined) {
                 const remoteDesc = new RTCSessionDescription(answer);
@@ -427,7 +429,7 @@ export class Chatroom {
             }
         });
         
-        socket.on(`icecandidate from`, async (remoteID: string, candidate: RTCIceCandidateInit) => {
+        this.socket.on(`icecandidate from`, async (remoteID: string, candidate: RTCIceCandidateInit) => {
             let connection = this.connections.find(c => c.id == remoteID);
             if (connection != undefined) {
                 
