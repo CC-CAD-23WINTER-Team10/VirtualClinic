@@ -1,11 +1,16 @@
 //@ts-ignore
-//import mongoose, { Schema } from "mongoose";
 const {mongoose, Schema, model} = require('mongoose');
 
 
 
 module.exports = class Database {
+
+    /**
+     * Connect to the database when this instance is created
+     * @param url MongoDB url
+     */
     constructor(url: string) {
+        //connect to database
         this.connect(url);
 
         //Add demo users
@@ -55,6 +60,7 @@ module.exports = class Database {
 
     }
 
+    //User Schema
     private readonly userSchema = new Schema({
         firstName: String,
         lastName: String,
@@ -66,18 +72,15 @@ module.exports = class Database {
         img: {type:String, default: ``},
         title: String,
         department: String
-    },{
-        virtuals: {
-            fullName: {
-                get() {
-                    return this.firstName + ' ' + this.lastName;
-                }
-            }
-        }
     });
-
+    
+    //User Model(Table)
     User = model('User', this.userSchema);
 
+    /**
+     * Connect to the MongoDB
+     * @param url MongoDB url
+     */
     async connect(url:string){
         try{
             console.log(`DB Connecting...`);
@@ -91,11 +94,23 @@ module.exports = class Database {
         }
     }
 
+    /**
+     * Retreive all users with their first name, last name, and the last socket ID.
+     * @returns 
+     */
     async getAllUser(){
         const users = await this.User.find({}).select(`firstName lastName lastSocketID`);
         return users;
     }
 
+    /**
+     * To check if the given username and password match any user in the database
+     * If it matches, return ture
+     * If not, return false
+     * @param username 
+     * @param password 
+     * @returns 
+     */
     async getAuth(username:string,password:string){
         const user = await this.User.findOne({username:username,password:password});
         if (user) {
@@ -105,11 +120,22 @@ module.exports = class Database {
         }
     }
 
+    /**
+     * Retrieve a user with javascript object notation by username
+     * @param username 
+     * @returns A User Object 
+     */
     async getOneUser(username:string){
         const user = await this.User.findOne({username:username}).select(`firstName lastName lastSocketID kind img title department`);
         return user.toObject();
     }
 
+    /**
+     * Check if a user is a physician by username. 
+     * If yes, return true. Ortherwise, return false.
+     * @param username 
+     * @returns 
+     */
     async isPhysician(username:string){
         const user = await this.User.findOne({username:username}).select(`kind`);
         if(user.kind == `physician`){
@@ -119,7 +145,11 @@ module.exports = class Database {
         }
     }
 
-
+    /**
+     * Update the user's the last socket ID
+     * @param id New Socket ID
+     * @param username 
+     */
     async updateSocketID(id:string,username:string){
         let user = await this.User.findOne({username:username});
         user.lastSocketID = id;
