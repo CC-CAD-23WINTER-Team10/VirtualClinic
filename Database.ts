@@ -141,6 +141,15 @@ module.exports = class Database {
         const user = await this.User.findOne({username:username}).select(`firstName lastName lastSocketID kind img title department`);
         return user.toObject();
     }
+    /**
+     * Retrieve a user with javascript object notation by socket ID
+     * @param id 
+     * @returns A User Object 
+     */
+    async getOneUserBySocket(id:string){
+        const user = await this.User.findOne({lastSocketID:id}).select(`firstName lastName title`);
+        return user.toObject();
+    }
 
     /**
      * Check if a user is a physician by username. 
