@@ -15,6 +15,7 @@ video{
 
 #local-video {
     background-color: aqua;
+    margin-top: 60px;
 }
 
 .remote-video {
