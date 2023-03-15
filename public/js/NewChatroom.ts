@@ -27,6 +27,7 @@ export class Chatroom {
 
     constructor(socket:any, chatroomDiv:HTMLDivElement){
         this.socket = socket;
+        this.socketCommunication();
         //Pass the references of the chatroom elements into this object
         this.previewContainer = chatroomDiv.querySelector(`.preview-container`)!;
         this.activeFrame = chatroomDiv.querySelector(`.active-speaker`)!;
@@ -240,7 +241,7 @@ export class Chatroom {
                 video: camID? {deviceId:camID} : false
             };
 
-            this.previewStream(constrain);
+            this.previewLocalStream(constrain);
         }
 
 
@@ -300,7 +301,7 @@ export class Chatroom {
 
 
 
-    private async previewStream(constrain:MediaStreamConstraints){
+    private async previewLocalStream(constrain:MediaStreamConstraints){
         const mediaStream = await navigator.mediaDevices.getUserMedia(constrain);
         this.activeVideo.srcObject = mediaStream;
     }
@@ -370,6 +371,16 @@ export class Chatroom {
         this.socket.on(`You are the first one`, () => {
             console.log(`YOU ARE THE FIRST PERSON IN THE ROOM`);
         });
+
+        this.socket.on(`invitation accepted by`,async(remoteID:string)=>{
+            console.log(`YOUR INVITATION IS ACCEPT BY ${remoteID}.`);
+            
+
+        })
+
+        this.socket.on(`invitation rejected by`,(remoteID:string)=>{
+            console.log(`YOUR INVITATION IS REJECTED BY ${remoteID}.`);
+        })
         
         
         this.socket.on(`new joiner`, async (remoteID: string) => {
