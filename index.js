@@ -140,13 +140,13 @@ io.on('connection', function (socket) {
 
 
     //The first message sent to the server when open Dashboard
-    socket.on(`Hi`,async(username)=>{
+    socket.on(`Hi`,async(username,status)=>{
         
         await db.updateSocketID(socket.id,username);//update the socket id in database so that we can track who is id's owner
 
         let newActiveUser = await db.getOneUser(username);//fetch the data of this user in the database (`firstName lastName lastSocketID kind img title department`)
         
-        newActiveUser.status = Status.Available;//add the status property to the user, new connected user will be available by default
+        newActiveUser.status = status;//add the status property to the user, new connected user will be available by default
         
         if(db.isPhysician(username)){
             //check if this user is physician, so that we can boardcast the new user list according to their role
@@ -162,7 +162,7 @@ io.on('connection', function (socket) {
         sendNewListToPhysicians();//any new online user, new list will be sent.
 
 
-        console.log(`Hi! `,activePatients.concat(activePhysicians));
+        console.log(`Hi! from ${username}`,/*activePatients.concat(activePhysicians)*/);
 
     });
 
@@ -189,6 +189,17 @@ io.on('connection', function (socket) {
         
         io.to(id).emit(`invitation from`, socket.id);
 
+    });
+
+
+
+    socket.on(`Status Change`,(newStatus)=>{
+        let allActiveUser = activePatients.concat(activePhysicians);
+        let thisUser = allActiveUser.find(u=>u.lastSocketID == socket.id);
+        thisUser.status = newStatus;
+
+        sendNewListToPatients();
+        sendNewListToPhysicians();
     });
 
 

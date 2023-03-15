@@ -7,6 +7,7 @@ export enum Status {
 
 
 export class User {
+    _id: string;
     lastSocketID: string;
     img: string;
     firstName: string;
