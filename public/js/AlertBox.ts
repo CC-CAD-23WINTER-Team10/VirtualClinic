@@ -19,7 +19,7 @@ export class AlertBox{
      * @param message 
      * @param title 
      */
-    constructor(title:string, message:string);
+    constructor(message:string,title?:string);
     /**
      * Create A full screen alert that has a title, a message ,and a dismiss button.
      * And it allows customised buttons using{text:``,clickListener: e=>{}}
