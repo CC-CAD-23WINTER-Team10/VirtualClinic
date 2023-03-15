@@ -402,6 +402,11 @@ main {
     /*!!!!!!!!!!!!!!!!!!TEMP*/
     background-color: #323232;
     position: relative;
+    text-align: center
+}
+
+.preview > video {
+    height: inherit;
 }
 
 .controls {
