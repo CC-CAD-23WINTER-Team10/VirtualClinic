@@ -10,11 +10,19 @@
 </head>
 <body>
 
-    <form id="join-form"  action="">
-        <input type="text" name="invite_link" required />
-        <input type="submit" value="Join Room" />
-
-    </form>
+    <main id="lobby-container">
+        <div id="form-container">
+            <div id="form__container__header">
+                <p> 👋 Create or Join a Room </p>
+            </div>
+            <div id="form__content__wrapper">
+                <form id="join-form"  action="">
+                    <input type="text" name="invite_link" required />
+                    <input type="submit" value="Join Room" />
+                </form>s
+            </div>
+        </div>
+    </main>
     
 </body>
     <script>
@@ -22,7 +30,7 @@
 
         form.addEventListener('submit', (e) => {
             e.preventDefault()
-            let inviteCode = e.target.invite_link.value
+            let inviteCode = e.target.invite_link.value  //force user to make it a one word. Otherwise this could create issues
             window.location = `index.html?room=${inviteCode}`
         })
     </script>
