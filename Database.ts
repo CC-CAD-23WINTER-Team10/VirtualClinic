@@ -52,6 +52,18 @@ module.exports = class Database {
                 c.kind = `patient`;
                 c.img = `pexels-teodora-popa-photographer-15502152.jpg`;
                 c.save();
+
+                let d = new this.User();
+                d.username = `004`;
+                d.password = `004`;
+                d.firstName = `May`;
+                d.lastName = `Smith`;
+                d.email = `004@004.com`;
+                d.kind = `patient`;
+                d.img = `pexels-sound-on-3394658.jpg`;
+                d.save();
+
+
                 console.log(`DEMO USERS ARE ADDED`);
             }
 
