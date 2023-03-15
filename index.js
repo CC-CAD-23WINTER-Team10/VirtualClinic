@@ -148,7 +148,8 @@ io.on('connection', function (socket) {
         
         newActiveUser.status = status;//add the status property to the user, new connected user will be available by default
         
-        if(db.isPhysician(username)){
+        const isPhysician = await db.isPhysician(username)
+        if(isPhysician){
             //check if this user is physician, so that we can boardcast the new user list according to their role
             //the patient should not be able to call other patients
             await socket.join(`PhysicianRoom`);
@@ -163,7 +164,6 @@ io.on('connection', function (socket) {
 
 
         console.log(`Hi! from ${username}`,/*activePatients.concat(activePhysicians)*/);
-
     });
 
 
@@ -172,25 +172,56 @@ io.on('connection', function (socket) {
 
     //when someone clicks the call/invite button, 
     //this message with the invited person's socket id will be sent to the server.
-    socket.on(`invite`,(id)=>{
+    socket.on(`invite`,async(id)=>{
+        //fetch user info
+        const user = await db.getOneUserBySocket(socket.id);
+        const fullName = (user.title? (user.title + ` `): ``) + user.firstName+ ` `+ user.lastName;
+        //console.log(fullName, ` is in `, socket.rooms);
         //then the server will check if the sender is in a room
         //if not, assgin a room to the sender
-
-        console.log(socket.id, ` is in `, socket.rooms);
-        let newChatroom = new Chatroom(Date.now());
-        if(socket.rooms.size == 1){
-            
-            //newChatroom.users.push();
+        const roomID = Array.from(socket.rooms).find(r => r != socket.id && r != `PhysicianRoom` && r != `PatientRoom`)
+        if(!roomID){
+            let newChatroom = new Chatroom(Date.now());
+            newChatroom.users.push(user);
             socket.join(newChatroom.roomID);
             chatrooms.push(newChatroom);
+
         } else {
 
         }
         
-        io.to(id).emit(`invitation from`, socket.id);
+        io.to(id).emit(`invitation from`, socket.id, fullName);
 
     });
 
+
+    socket.on(`accept invitation from`, (id)=>{
+        //get the chatroom ID that was assigned by the system
+        const roomsOfInviSender = Array.from(io.of("/").adapter.sids.get(id));
+        console.log(roomsOfInviSender)
+        const chatroomID = roomsOfInviSender.find(r => r != id && r != `PhysicianRoom` && r != `PatientRoom`)
+        if(chatroomID){
+            //get the existing users in the room before the new one joins
+            const users = Array.from(io.of("/").adapter.rooms.get(chatroomID));
+            //send message to users exsiting in the room a message to start peer connection estabilshment
+            io.to(chatroomID).emit(`new joiner`, socket.id);
+            //send back to the invitation sender
+            io.to(id).emit(`invitation accepted by`, socket.id);//First chat room IO for client-side
+            //join the room
+            socket.join(chatroomID);
+            //send message to the invitation receiver to start peer connection estabilshment
+            socket.emit(`You need to provide offer`,users);
+            console.log(chatroomID)
+        }else{
+            throw new Error(`Cannot find chatroom ID. (socket.on - accept invitation from)`)
+        }
+       
+        
+    });
+
+    socket.on(`reject invitation from`, (id)=>{
+        io.to(id).emit(`invitation rejected by`, socket.id);
+    });
 
 
     socket.on(`Status Change`,(newStatus)=>{
