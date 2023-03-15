@@ -141,13 +141,18 @@ module.exports = class Database {
         const user = await this.User.findOne({username:username}).select(`firstName lastName lastSocketID kind img title department`);
         return user.toObject();
     }
+
+    async getOneUserByID(_id:any){
+        const user = await this.User.findOne({_id:_id}).select(`firstName lastName lastSocketID kind img title department`);
+        return user.toObject();
+    }
     /**
      * Retrieve a user with javascript object notation by socket ID
      * @param id 
      * @returns A User Object 
      */
     async getOneUserBySocket(id:string){
-        const user = await this.User.findOne({lastSocketID:id}).select(`firstName lastName title`);
+        const user = await this.User.findOne({lastSocketID:id}).select(`firstName lastName lastSocketID kind img title department`);
         return user.toObject();
     }
 
