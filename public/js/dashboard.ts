@@ -164,8 +164,7 @@ function createUserElement(user: User) {
  */
 function createDetailElement(user:User) {
     //fetch the user's info
-    let _id = user._id;
-    let id= user.lastSocketID; 
+    let _id = user._id; 
     let name = user.firstName + ` ` + user.lastName;
     let title = user.title; 
     let department = user.department;
@@ -246,7 +245,7 @@ function destroyDetailElement(element: myDiv) {
 function setCallButton(user:User,callButton:HTMLButtonElement){
     //fetch the remote user's info
     let status = user.status;
-    let id= user.lastSocketID; 
+    let _id= user._id; 
     let name = user.firstName + ` ` + user.lastName;
     let title = user.title; 
 
@@ -282,7 +281,7 @@ function setCallButton(user:User,callButton:HTMLButtonElement){
             }
             //Set the event for the Yes Button in the alert
             let yesListener = function (ev:MouseEvent){
-                console.log(`You Click Yes!!`);
+                //console.log(`You Click Yes!!`);
                 //Only if the user is in a meeting, the user's status will be Busy.
                 //If not, means the user is not in a meeting, then it should start from the entry point
                 if(currentStatus != Status.Busy){
@@ -298,7 +297,7 @@ function setCallButton(user:User,callButton:HTMLButtonElement){
 
                 
                 invitedUsers.push(user);//Add the called user into this array for reference(UI dependency)
-                socket.emit(`invite`,id);//Send invitation via server
+                socket.emit(`invite`,_id);//Send invitation via server
                 
             }
             //End of Set the event for the Yes Button in the alert
@@ -422,7 +421,7 @@ socket.on(`new user list`,(users:Array<User>)=>{
 })
 
 //Get a call
-socket.on("invitation from",(remoteID:string, name: string)=>{
+socket.on("invitation from",(_id:string, name: string)=>{
     console.log(`GET A CALL FROM ${name}.`);
     //set message, yes button event, and dismiss butoon event in a full screen alert
     let message = `${name} invites you to a meeting. Do you want to accept?`
@@ -436,22 +435,26 @@ socket.on("invitation from",(remoteID:string, name: string)=>{
         chatroom.start();//Chatroom start point
 
 
-        const user = userArray.find( u => u.lastSocketID == remoteID);
+        const user = userArray.find( u => u._id == _id);
         invitedUsers.push(user);//Add the called user into this array for reference(UI dependency)
-        socket.emit(`accept invitation from`, remoteID);//Send accept via server
+        socket.emit(`accept invitation from`, _id);//Send accept via server
         console.log(`You accept a call from ${name}`)
     }
+    let rejected = false;
     let newFullScreenAlert = new YesAlertBox(message,yesButtonEvent);
     newFullScreenAlert.dismissButton.addEventListener(`click`,()=>{
-        socket.emit(`reject invitation from`, remoteID);
+        socket.emit(`reject invitation from`, _id);
+        rejected = true;
     });
     newFullScreenAlert.show();
 
     console.log(`Waiting for your response.`);
     
-    //After 60s, reject automatically and close the alert.
+    //After 30s, reject automatically and close the alert.
     setTimeout(()=>{
         newFullScreenAlert.close();
-        socket.emit(`reject invitation from`, remoteID);
-    },1000*60)
+        if(!rejected){
+            socket.emit(`reject invitation from`, _id);
+        }
+    },1000*30)
 })
