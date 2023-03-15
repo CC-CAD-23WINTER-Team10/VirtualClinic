@@ -9,7 +9,8 @@ import { Chatroom } from "./NewChatroom.js";
 //@ts-ignore
 const socket = io(`/`); //Connect with the server's socket io
 var currentStatus: Status; //Own status
-var chatroom:Chatroom; 
+var chatroom:Chatroom;
+var userArray:User[] = [];
 var invitedUsers:User[] = []; //An array that stores users that the current user invited(so the call button will be disabled)
 var detailClickListener = function (e: MouseEvent) {
     let target = e.target as HTMLElement;
@@ -341,11 +342,11 @@ socket.on("disconnect", () => {
 
 
 socket.on(`new user list`,(users:Array<User>)=>{
-    users = users.filter(u=> u.lastSocketID != socket.id);//Remove the current user from the array.
+    userArray = users.filter(u=> u.lastSocketID != socket.id);//Remove the current user from the array.
     //console.log(users);
     userList.innerHTML = ``;//clear the user list
 
-    users.forEach(u => {//generate the user list items
+    userArray.forEach(u => {//generate the user list items
 
         let fullName = u.firstName + ` ` + u.lastName;
         let userDiv = createUserElement(u);
@@ -382,13 +383,13 @@ socket.on(`new user list`,(users:Array<User>)=>{
         let callButton = detailDiv.querySelector(`button`);
         console.log(callButton);
         console.log(detailDiv.my_relation);
-        let detailOwnerID = detailDiv.my_relation;
+        const detailOwnerID = detailDiv.my_relation;
 
         //Check if the detail section Owner is still online(active user on server-side)
         //they may be offline, after the detail section creation
         //If they are online, refresh the related UI accordingly,
         //If not diable the call button and change status to offline
-        let owner = users.find( u => u._id == detailOwnerID);
+        const owner = userArray.find( u => u._id == detailOwnerID);
 
         if (owner) {
             //Online
@@ -420,11 +421,37 @@ socket.on(`new user list`,(users:Array<User>)=>{
 
 })
 
+//Get a call
 socket.on("invitation from",(remoteID:string, name: string)=>{
-    console.log(`GET A CALL FROM ${remoteID}.`);
-    let message = `${name} is calling you. Do you want to accept?`
+    console.log(`GET A CALL FROM ${name}.`);
+    //set message, yes button event, and dismiss butoon event in a full screen alert
+    let message = `${name} invites you to a meeting. Do you want to accept?`
     let yesButtonEvent = ()=>{
+        currentStatus = Status.Busy;//change the local user's status
+        socket.emit(`Status Change`, Status.Busy);//notify server the new status
 
+        showChatroom();
+        //Create a Chatroom Object to manage the Peer Connection and the UI change in chatroom Div.
+        chatroom = new Chatroom(socket, chatroomDiv);
+        chatroom.start();//Chatroom start point
+
+
+        const user = userArray.find( u => u.lastSocketID == remoteID);
+        invitedUsers.push(user);//Add the called user into this array for reference(UI dependency)
+        socket.emit(`accept invitation from`, remoteID);//Send accept via server
+        console.log(`You accept a call from ${name}`)
     }
-    //let newFullScreenAlert = new YesAlertBox()
+    let newFullScreenAlert = new YesAlertBox(message,yesButtonEvent);
+    newFullScreenAlert.dismissButton.addEventListener(`click`,()=>{
+        socket.emit(`reject invitation from`, remoteID);
+    });
+    newFullScreenAlert.show();
+
+    console.log(`Waiting for your response.`);
+    
+    //After 60s, reject automatically and close the alert.
+    setTimeout(()=>{
+        newFullScreenAlert.close();
+        socket.emit(`reject invitation from`, remoteID);
+    },1000*60)
 })
