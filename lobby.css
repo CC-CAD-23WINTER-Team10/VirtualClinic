@@ -3,6 +3,18 @@
     color: aliceblue;
 }
 
+header{
+    position:fixed;
+    top: 10%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #363739;
+    border-radius: 10px;
+    padding: 20px;
+    width: 90%;
+    text-align: center;
+}
+
 #form-container{
     width: 90%;
     max-width: 600px;
@@ -48,4 +60,16 @@ input {
 
 input[type='submit'] {
     background-color:rgba(50, 112, 200, 0.7);
+}
+
+footer{
+    background-color: #363739;
+    padding: 20px;
+    border-radius: 10px;
+    position:fixed;
+    top: 90%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    text-align: center;
 }
