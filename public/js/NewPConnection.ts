@@ -1,9 +1,13 @@
+/**
+ * A Class that contains a Peer Connection, the socket ID for exchange of SDPs and ICE candidate, and
+ * the configuration of the ICE Servers. This class will be responsible for SDPs and ICE candidates exchanges.  
+ */
 export class PConnection {
     socketID: string;
     localStream: MediaStream;
-    remoteStream: MediaStream = new MediaStream();
-    remoteStreamSetterCallback:(newStream:MediaStream)=>void;
-    socket: any;
+    remoteStream: MediaStream;
+    remoteStreamSetterCallback: (newStream: MediaStream) => void;//(See explaination of setRemoteStream())
+    socket: any; //A reference to the socket..IO server
     configuration = {
         //STUN Servers
         iceServers: [
@@ -14,10 +18,10 @@ export class PConnection {
             }
         ]
     };
-    peerConnection:RTCPeerConnection; // WebRTC connection object
+    peerConnection: RTCPeerConnection; // WebRTC connection object
 
 
-    constructor(id: string, localStream: MediaStream, socket: any,remoteStreamSetterCallback?:(newStream:MediaStream)=>void) {
+    constructor(id: string, localStream: MediaStream, socket: any, remoteStreamSetterCallback?: (newStream: MediaStream) => void) {
         this.socketID = id;
         this.localStream = localStream;
         this.socket = socket;
@@ -25,59 +29,17 @@ export class PConnection {
         this.peerConnection = new RTCPeerConnection(this.configuration);
 
 
-        this.peerConnection.onicecandidateerror = (ev)=>{
-            //@ts-ignore
-            console.log(ev.errorCode);
-        }
-
-        // Listen connection changes !!!!!This is not working in Firefox
-        this.peerConnection.addEventListener('connectionstatechange', () => {
-            console.log(`CONNECTION STATE CHANGED`);
-            if (this.peerConnection.connectionState === 'connected') {
-                // Peers connected!
-                console.log(`Peers connected!!!!!`)
-        
-            }else if(this.peerConnection.connectionState === 'connecting'){
-                console.log(`Peers connecting!!!!!`)
-            }else if(this.peerConnection.connectionState === 'failed'){
-                console.log(`Peers failed!!!!!`)
-            }
-            //"closed" | "connected" | "connecting" | "disconnected" | "failed" | "new";
-            switch (this.peerConnection.connectionState) {
-                case "new":
-                case "connecting":
-                  console.log("CONNECTION STATE CHANGED: Connecting…");
-                  break;
-                case "connected":
-                  console.log("CONNECTION STATE CHANGED: Online");
-                  break;
-                case "disconnected":
-                  console.log("CONNECTION STATE CHANGED: Disconnecting…");
-                  break;
-                case "closed":
-                  console.log("CONNECTION STATE CHANGED: Offline");
-                  break;
-                case "failed":
-                  console.log("CONNECTION STATE CHANGED: Error");
-                  break;
-                default:
-                  console.log("CONNECTION STATE CHANGED: Unknown");
-                  break;
-              }
-        });
-
-
         //FOR DEBUG
         this.peerConnection.addEventListener("iceconnectionstatechange", (event) => {
-            console.log(`iceconnectionstatechange: `,this.peerConnection.iceConnectionState);
+            console.log(`iceconnectionstatechange: `, this.peerConnection.iceConnectionState);
         });
         //FOR DEBUG
         this.peerConnection.addEventListener("icegatheringstatechange", (event) => {
-            console.log(`icegatheringstatechange: `,this.peerConnection.iceGatheringState);
+            console.log(`icegatheringstatechange: `, this.peerConnection.iceGatheringState);
         });
         //FOR DEBUG
         this.peerConnection.addEventListener("signalingstatechange", (event) => {
-            console.log(`signalingstatechange: `,this.peerConnection.signalingState);
+            console.log(`signalingstatechange: `, this.peerConnection.signalingState);
         });
 
 
@@ -93,47 +55,62 @@ export class PConnection {
         // Listen to enable the streaming video and audio on UI
         this.peerConnection.addEventListener('track', async (event) => {
             //console.log(`Get TRACK INFO FROM PEER CONNECTION.`);
-            this.setRemoteStream(event.streams[0],this.remoteStreamSetterCallback);
+            this.setRemoteStream(event.streams[0], this.remoteStreamSetterCallback);
             //console.log(`Set Remote Video Stream`);
         });
 
-        
+
     }
 
-
+    /**
+     * Put the local video and audio tracks into the peer connection
+     */
     async addLocalTracks() {
-        console.log(`START ADDING LOCAL TRACKS.`);
-        let localTracks = this.localStream.getTracks();
+        //Someone might not grant access to media or the media is occupied by other applications
+        //In this case, check the local stream existance first,
+        //if not, just not add the tracks and they can still establish the connection for listening to others
+        if (this.localStream) {
+            console.log(`START ADDING LOCAL TRACKS.`);
 
-        localTracks.forEach(track => {
-            console.log(track);
-            this.peerConnection.addTrack(track, this.localStream);
-            console.log(`track added`);
+            let localTracks = this.localStream.getTracks();
 
-        });
+            localTracks.forEach(track => {
+                console.log(track);
+                this.peerConnection.addTrack(track, this.localStream);
+                console.log(`track added`);
 
-        console.log(`Local Tracks is added to connection(${this.socketID})`);
-        
+            });
+
+            console.log(`Local Tracks is added to connection(${this.socketID})`);
+        } else {
+            console.log(`NO LOCAL TRACK IS AVAILABLE RIGHT NOW`)
+        }
+
+
     }
 
-    // To provide an offer to other peer
+
+
+    /**
+     * For the person who is the lastest participant
+     * to provide an offer to other peer(existing users in the chatroom)
+     */
     async initACall() {
         console.log(`INITIALISE A CALL.`);
-        /**
-         * Set Offer
-         */
+
         let offer = await this.peerConnection.createOffer();
-
         await this.peerConnection.setLocalDescription(offer);
-
-        //console.log(`Offer: `, offer);
 
         this.socket.emit(`I provide offer`, offer, this.socketID);
         console.log(`END OF CALL INITIALISATION.`);
-        
+
     }
 
-    // Sending SDPs to other peer
+
+    /**
+     * For those who are already in the chatroom, send SDPs to other peer(Offer Provider)
+     * @param offer the SDP from the offer provider
+     */
     async setRemoteDescription(offer: RTCSessionDescriptionInit) {
         console.log(`GET OFFER FROM CALLER.`);
         this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
@@ -142,15 +119,40 @@ export class PConnection {
 
         this.socket.emit(`my answer to`, this.socketID, answer);
         console.log(`REPLY TO CALL WITH ANSWER.`);
-        
+
     }
 
 
-    //setter function for remote stream
-    setRemoteStream(stream:MediaStream, callback?:(newStream:MediaStream)=>void){
+    /**
+     * Remote stream setter. When the system set the remote stream, a function will execute.
+     * A new remote stream will pass into the funtion.
+     * This function is mainly for communication with the Chatroom Class. When the connection receives
+     * a new media stream, it will pass the new stream to Chatroom Class to put the stream on the screen.
+     * @param stream the new remote stream
+     * @param callback the funtion to execute after setting the remote stream
+     */
+    setRemoteStream(stream: MediaStream, callback?: (newStream: MediaStream) => void) {
         this.remoteStream = stream;
-        if(callback){
+        if (callback) {
             callback(stream);
         }
+    }
+
+    /**
+     * Stop the peer conncetion.
+     * Besides, it stops media tracks, removes all references;
+     */
+    close() {
+        this.peerConnection.close();
+        this.remoteStream.getTracks().forEach(t=>{
+            t.stop();
+        })
+        this.socketID = null;
+        this.localStream = null;
+        this.remoteStream = null;
+        this.remoteStreamSetterCallback = null;
+        this.socket = null;
+        this.configuration = null;
+        this.peerConnection = null;
     }
 }
