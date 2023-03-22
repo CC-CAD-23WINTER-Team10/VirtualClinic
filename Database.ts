@@ -139,12 +139,21 @@ module.exports = class Database {
      */
     async getOneUser(username:string){
         const user = await this.User.findOne({username:username}).select(`firstName lastName lastSocketID kind img title department`);
-        return user.toObject();
+        if(user){
+            return user.toObject();
+        }else{
+            return null;
+        }
+        
     }
 
     async getOneUserByID(_id:any){
         const user = await this.User.findOne({_id:_id}).select(`firstName lastName lastSocketID kind img title department`);
-        return user.toObject();
+        if(user){
+            return user.toObject();
+        }else{
+            return null;
+        }
     }
     /**
      * Retrieve a user with javascript object notation by socket ID
@@ -153,7 +162,11 @@ module.exports = class Database {
      */
     async getOneUserBySocket(id:string){
         const user = await this.User.findOne({lastSocketID:id}).select(`firstName lastName lastSocketID kind img title department`);
-        return user.toObject();
+        if(user){
+            return user.toObject();
+        }else{
+            return null;
+        }
     }
 
     /**
@@ -173,13 +186,18 @@ module.exports = class Database {
 
     /**
      * Update the user's the last socket ID
-     * @param id New Socket ID
+     * @param socketID New Socket ID
      * @param username 
      */
-    async updateSocketID(id:string,username:string){
+    async updateSocketID(socketID:string,username:string){
         let user = await this.User.findOne({username:username});
-        user.lastSocketID = id;
-        await user.save();
-        //console.log(user);
+        if(user){
+            user.lastSocketID = socketID;
+            await user.save();
+        } else {
+            console.log(`ATTEMPT TO UPDATE SOCKET ID IN DATABASE FAILED WITH USERNAME:${username}`)
+        }
+        
+        
     }
 }
