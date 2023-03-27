@@ -17,7 +17,7 @@ export class PConnection {
     peerConnection:RTCPeerConnection; // WebRTC connection object
 
 
-    constructor(id: string, localStream: MediaStream, socket: any,remoteStreamSetterCallback?:(newStream:MediaStream)=>void) {
+    constructor(id: string, localStream: MediaStream, socket: any,remoteStreamSetterCallback:(newStream:MediaStream)=>void) {
         this.socketID = id;
         this.localStream = localStream;
         this.socket = socket;

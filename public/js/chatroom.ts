@@ -104,9 +104,6 @@ socket.on(`new joiner`, async (remoteID: string) => {
     await newConnection.addLocalTracks();
     connections.push(newConnection);
     console.log(`WAIT FOR OFFER & ICE FROM USER ${remoteID}`);
-
-
-
 });
 
 socket.on(`You need to provide offer`, async (users: string[]) => {
@@ -134,7 +131,6 @@ socket.on(`new offer`, (offer: RTCSessionDescriptionInit, remoteID: string) => {
     } else {
         console.log(`CANNOT FIND CONNECTION WITH ID:${remoteID}. (socket.on(\`new offer\`))`);
     }
-
 });
 
 socket.on(`you answer from`, async (remoteID: string, answer: RTCSessionDescriptionInit) => {
@@ -161,5 +157,4 @@ socket.on(`icecandidate from`, async (remoteID: string, candidate: RTCIceCandida
     } else {
         console.log(`CANNOT FIND CONNECTION WITH ID:${remoteID}. (socket.on(\`icecandidate from\`))`);
     }
-
 });

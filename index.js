@@ -320,7 +320,6 @@ function requireHTTPS(req, res, next) {
     next();
 }
 
-
 function sendNewListToPatients() {
     io.in(`PatientRoom`).emit(`new user list`, activePhysicians);
 }

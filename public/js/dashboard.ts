@@ -22,6 +22,7 @@ var detailClickListener = function (e: MouseEvent) {
         destroyDetailElement(element);
     }
 }
+var userLog: string | Node;
 
 /**
  * ICON SVG IMAGES
@@ -58,6 +59,8 @@ let activeSpeakerDiv = chatroomDiv.querySelector(`.active-speaker`) as myDiv;
 let shrinkableBox = document.querySelector(`#shrinkable-box`) as HTMLDivElement;
 let shrinkableBoxFlexContent = shrinkableBox.querySelector(`div`) as HTMLDivElement;
 let expensionButton = shrinkableBox.querySelector(`.expension-button`) as HTMLButtonElement;
+
+var user = document.querySelector(`#user`) as HTMLDivElement;
 
 //SizeObservers
 let bodySizeObserver = new ResizeObserver(e => {
@@ -350,8 +353,16 @@ socket.on("disconnect", () => {
     console.log(`DISCONNECTED WITH SERVER.`);
 });
 
-
 socket.on(`new user list`, (users: Array<User>) => {
+    
+    if (!userLog){ //to show current login user --Check for userLog to eliminate duplicates
+        userArray = users.filter(u => u.lastSocketID == socket.id);  
+        //console.log(userArray[0]);
+        userLog = createUserElement(userArray[0]);
+        //console.log(userLog);
+        user.append(userLog);
+    }
+    
     userArray = users.filter(u => u.lastSocketID != socket.id);//Remove the current user from the array.
     //console.log(users);
     userList.innerHTML = ``;//clear the user list
