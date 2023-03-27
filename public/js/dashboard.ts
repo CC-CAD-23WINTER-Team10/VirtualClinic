@@ -10,7 +10,7 @@ import { Chatroom } from "./NewChatroom.js";
 const socket = io(`/`); //Connect with the server's socket io
 var currentStatus: Status; //Own status
 var chatroom: Chatroom;
-var userArray: User[] = [];
+var userArray: User[] = [];//store the user info from server
 var invitedUsers: User[] = []; //An array that stores users that the current user invited(so the call button will be disabled)
 var detailClickListener = function (e: MouseEvent) {
     let target = e.target as HTMLElement;
@@ -168,12 +168,7 @@ function createUserElement(user: User) {
 /**
  * Create a Div that contains user protrait, 
  * personal details, and status bar with call button.
- * @param id 
- * @param name 
- * @param title 
- * @param department 
- * @param img 
- * @param status 
+ * @param user 
  * @returns 
  */
 function createDetailElement(user: User) {
@@ -189,7 +184,7 @@ function createDetailElement(user: User) {
     //console.log(`CREATING A DETAIL ELEMENT.`);
     let detailDiv = document.createElement(`div`) as myDiv;
     detailDiv.classList.add(`person-detial`);
-    detailDiv.my_relation = _id;
+    detailDiv.my_relation = _id;//Add this id for the UI change when the related user' status changes(See Soket.on new user list)
 
     let upperSection = document.createElement(`div`);
     let iconDiv = document.createElement(`div`);
@@ -299,7 +294,7 @@ function setCallButton(user: User, callButton: HTMLButtonElement) {
                 //Only if the user is in a meeting, the user's status will be Busy.
                 //If not, means the user is not in a meeting, then it should start from the entry point
                 if (currentStatus != Status.Busy) {
-
+                    const previousStatus = currentStatus ?? Status.Available;
                     currentStatus = Status.Busy;//change the local user's status
                     socket.emit(`Status Change`, Status.Busy);//notify server the new status
 
@@ -307,6 +302,13 @@ function setCallButton(user: User, callButton: HTMLButtonElement) {
                     //Create a Chatroom Object to manage the Peer Connection and the UI change in chatroom Div.
                     chatroom = new Chatroom(socket, chatroomDiv);
                     chatroom.start();//Chatroom start point
+                    chatroom.onClose = () => {
+                        //Add events that happen when the chatroom is closing.
+                        hidechatroom(); //hide chat room from the dashboard.(codes are still there)
+                        chatroom = null; //remove Chatroom Object to release rescources;
+                        currentStatus = previousStatus;// go back to previous status
+                        socket.emit(`Status Change`, currentStatus);//notify server the new status
+                    }
                 }
 
 
@@ -364,19 +366,14 @@ socket.on(`new user list`, (users: Array<User>) => {
     }
     
     userArray = users.filter(u => u.lastSocketID != socket.id);//Remove the current user from the array.
-    //console.log(users);
+
     userList.innerHTML = ``;//clear the user list
+    //generate the user list items
+    userArray.forEach(u => {
 
-    userArray.forEach(u => {//generate the user list items
-
-        let fullName = u.firstName + ` ` + u.lastName;
         let userDiv = createUserElement(u);
 
         userDiv.addEventListener(`click`, (e) => {//Add click event to each user list item
-            let div = e.target as myDiv;
-            if (div.my_relation == undefined) {
-                div = div.parentElement as myDiv;
-            }
 
             //When the user click the user list item, related detail will show up
             let detail = createDetailElement(u);
@@ -402,14 +399,12 @@ socket.on(`new user list`, (users: Array<User>) => {
         let statusIcon = detailDiv.querySelector(`#statusIcon`) as myDiv;
         let statusText = detailDiv.querySelector(`#statusText`) as myDiv;
         let callButton = detailDiv.querySelector(`button`);
-        console.log(callButton);
-        console.log(detailDiv.my_relation);
-        const detailOwnerID = detailDiv.my_relation;
 
-        //Check if the detail section Owner is still online(active user on server-side)
-        //they may be offline, after the detail section creation
-        //If they are online, refresh the related UI accordingly,
-        //If not diable the call button and change status to offline
+        //Check if the detail section Owner is still online(active user on server-side).
+        //They may be offline, after the detail section creation
+        //If they are online, refresh the related UI accordingly
+        //If not disable the call button and change status to offline
+        const detailOwnerID = detailDiv.my_relation;
         const owner = userArray.find(u => u._id == detailOwnerID);
 
         if (owner) {
@@ -445,10 +440,12 @@ socket.on(`new user list`, (users: Array<User>) => {
 //Get a call
 socket.on("invitation from", (_id: string, name: string) => {
     console.log(`GET A CALL FROM ${name}.`);
-    //set message, yes button event, and dismiss butoon event in a full screen alert
+    let activeResponse = false;// To track if the user click yes or dismiss
+    //set message, yes button event, and dismiss button event in a full screen alert
     let message = `${name} invites you to a meeting. Do you want to accept?`
     let yesButtonEvent = () => {
-        currentStatus = Status.Busy;//change the local user's status
+        const previousStatus = currentStatus ?? Status.Available;
+        currentStatus = Status.Busy;//change the local user's status to busy(ready to be in a chatroom)
         socket.emit(`Status Change`, Status.Busy);//notify server the new status
 
         showChatroom();
@@ -456,27 +453,60 @@ socket.on("invitation from", (_id: string, name: string) => {
         chatroom = new Chatroom(socket, chatroomDiv);
         chatroom.start();//Chatroom start point
 
+        chatroom.onClose = () => {
+            //Add events that happen when the chatroom is closing.
+            hidechatroom(); //hide chat room from the dashboard.(codes are still there)
+            chatroom = null; //remove Chatroom Object to release rescources;
+            currentStatus = previousStatus;// go back to previous status
+            socket.emit(`Status Change`, currentStatus);//notify server the new status
+        }
+
+
 
         const user = userArray.find(u => u._id == _id);
         invitedUsers.push(user);//Add the called user into this array for reference(UI dependency)
         socket.emit(`accept invitation from`, _id);//Send accept via server
         console.log(`You accept a call from ${name}`)
+
+        activeResponse = true;
     }
-    let rejected = false;
+    
     let newFullScreenAlert = new YesAlertBox(message, yesButtonEvent);
+    //Add an event for the dismiss button,
+    //to send rejection
     newFullScreenAlert.dismissButton.addEventListener(`click`, () => {
         socket.emit(`reject invitation from`, _id);
-        rejected = true;
+        activeResponse = true;
     });
     newFullScreenAlert.show();
 
     console.log(`Waiting for your response.`);
 
-    //After 30s, reject automatically and close the alert.
+    //After 30s, reject the call automatically and close the alert.
+    //NOTE: THIS TIMER WILL ALWAY RUN NO MATTER WETHER THE USER CLICKED DISMISS OR NOT
     setTimeout(() => {
         newFullScreenAlert.close();
-        if (!rejected) {
+        //if the user has already clicked the dismiss, then don't send the rejection again.
+        if (!activeResponse) {
             socket.emit(`reject invitation from`, _id);
         }
-    }, 1000 * 30)
+    }, 1000 * 30);
+});
+
+//receive a rejection(dismiss button trigerred ot auto-send)
+socket.on(`invitation rejected by`, (_id: string) => {
+    const user = userArray.find(u=> u._id == _id);
+    console.log(`YOUR INVITATION IS REJECTED BY ${user.firstName + ` ` + user.lastName}.`);
+    //remove the user from the invited users array, so that you can call again.
+    invitedUsers = invitedUsers.filter(u=>u != user);
+
+    //check if the detail section of this user is opened
+    let detailDiv = shrinkableBox.querySelector(`.person-detial`) as myDiv;
+    //If yes and the div is about this user, update the call button (to enable it);
+    if(detailDiv?.my_relation == _id){
+        let callButton = detailDiv.querySelector(`button`);
+        setCallButton(user,callButton);
+    }
+
+    
 })

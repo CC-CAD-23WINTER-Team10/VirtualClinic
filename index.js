@@ -147,23 +147,28 @@ io.on('connection', function (socket) {
 
         let newActiveUser = await db.getOneUser(username);//fetch the data of this user in the database (`firstName lastName lastSocketID kind img title department`)
 
-        newActiveUser.status = status;//add the status property to the user, new connected user will be available by default
+        if (newActiveUser) {
+            newActiveUser.status = status;//add the status property to the user, new connected user will be available by default
 
-        const isPhysician = await db.isPhysician(username)
-        if (isPhysician) {
-            //check if this user is physician, so that we can boardcast the new user list according to their role
-            //the patient should not be able to call other patients
-            await socket.join(`PhysicianRoom`);
-            activePhysicians.push(newActiveUser);//push the new active user to the active user array with the data from the database
-            
+            const isPhysician = await db.isPhysician(username)
+            if (isPhysician) {
+                //check if this user is physician, so that we can boardcast the new user list according to their role
+                //the patient should not be able to call other patients
+                await socket.join(`PhysicianRoom`);
+                activePhysicians.push(newActiveUser);//push the new active user to the active user array with the data from the database
+
+            } else {
+                await socket.join(`PatientRoom`);
+                activePatients.push(newActiveUser);//push the new active user to the active user array with the data from the database
+            }
+            sendNewListToPatients();
+            sendNewListToPhysicians();
         } else {
-            await socket.join(`PatientRoom`);
-            activePatients.push(newActiveUser);//push the new active user to the active user array with the data from the database
+            console.log(`FAILED TO GET USER WITH USERNAME:${username}`);
         }
-        sendNewListToPatients();
-        sendNewListToPhysicians();
 
-        //console.log(`Hi! from ${username}`,/*activePatients.concat(activePhysicians)*/);
+
+
     });
 
 
@@ -177,21 +182,26 @@ io.on('connection', function (socket) {
         const sender = await db.getOneUserBySocket(socket.id);
         const receiver = await db.getOneUserByID(_id);
         const fullName = (sender.title ? (sender.title + ` `) : ``) + sender.firstName + ` ` + sender.lastName;
-        //console.log(fullName, ` is in `, socket.rooms);
-        //then the server will check if the sender is in a room
-        //if not, assgin a room to the sender
-        const roomID = Array.from(socket.rooms).find(r => r != socket.id && r != `PhysicianRoom` && r != `PatientRoom`)
-        if (!roomID) {
-            let newChatroom = new Chatroom(Date.now());
-            newChatroom.users.push(sender);
-            socket.join(newChatroom.roomID);
-            chatrooms.push(newChatroom);
 
-        } else {
+        if (sender && receiver) {
+
+            //then the server will check if the sender is in a room
+            //if not, assgin a room to the sender
+            const roomID = Array.from(socket.rooms).find(r => r != socket.id && r != `PhysicianRoom` && r != `PatientRoom`)
+            console.log(roomID);
+            if (!roomID) {
+                let newChatroom = new Chatroom(Date.now());
+                newChatroom.users.push(sender);
+                socket.join(newChatroom.roomID);
+                chatrooms.push(newChatroom);
+
+            } 
+
+            io.to(receiver.lastSocketID).emit(`invitation from`, sender._id, fullName);
 
         }
 
-        io.to(receiver.lastSocketID).emit(`invitation from`, sender._id, fullName);
+
 
     });
 
@@ -215,11 +225,11 @@ io.on('connection', function (socket) {
                 io.to(invitationSender.lastSocketID).emit(`invitation accepted by`, invitationReceiver._id);//First chat room IO for client-side
                 //join the room
                 socket.join(chatroomID);
-                (chatrooms.find(r=>r.roomID == chatroomID)).users.push(invitationReceiver);
-                
+                (chatrooms.find(r => r.roomID == chatroomID)).users.push(invitationReceiver);
+
                 //send message to the invitation receiver to start peer connection estabilshment
                 socket.emit(`You need to provide offer`, users);//From here they communicate with socketID;
-                
+
             } else {
                 //Maybe the invitation Sender disconnected from the server, it will get undefined.
                 console.log(`SOCKET ERROR: Cannot find chatroom ID. (socket.on, accept invitation from)`)
@@ -231,15 +241,17 @@ io.on('connection', function (socket) {
     });
 
     //the Invitation Receiver Reply Rejection
-    socket.on(`reject invitation from`, (id) => {
-        io.to(id).emit(`invitation rejected by`, socket.id);
+    socket.on(`reject invitation from`, async (_id) => {
+        const invitationSender = await db.getOneUserByID(_id);
+        const invitationReceiver = await db.getOneUserBySocket(socket.id);
+        io.to(invitationSender.lastSocketID).emit(`invitation rejected by`, invitationReceiver._id);
     });
 
 
     socket.on(`Status Change`, (newStatus) => {
         let allActiveUser = activePatients.concat(activePhysicians);
         let thisUser = allActiveUser.find(u => u.lastSocketID == socket.id);
-        thisUser.status = newStatus;
+        thisUser.status = newStatus ?? Status.Available;
 
         sendNewListToPatients();
         sendNewListToPhysicians();
@@ -272,20 +284,41 @@ io.on('connection', function (socket) {
 
     });
 
-    socket.on(`I provide offer`, function (offer, id) {
-        io.to(id).emit(`new offer`, offer, socket.id);
+    socket.on(`I provide offer`, function (offer, socketID) {
+        io.to(socketID).emit(`new offer`, offer, socket.id);
     });
 
-    socket.on(`my answer to`, function (id, answer) {
-        io.to(id).emit(`you answer from`, socket.id, answer);
+    socket.on(`my answer to`, function (socketID, answer) {
+        io.to(socketID).emit(`you answer from`, socket.id, answer);
     });
 
-    socket.on(`new-ice-candidate to`, function (id, candidate) {
-        io.to(id).emit(`icecandidate from`, socket.id, candidate);
+    socket.on(`new-ice-candidate to`, function (socketID, candidate) {
+        io.to(socketID).emit(`icecandidate from`, socket.id, candidate);
     });
 
     socket.on('error', function (er) {
         console.log(er);
+    });
+
+
+    socket.on(`leave`, async () => {
+        const user = await db.getOneUserBySocket(socket.id);
+        const roomsOfUser = Array.from(io.of("/").adapter.sids.get(socket.id));
+        console.log(user)
+        console.log(roomsOfUser);
+        const chatroomID = roomsOfUser.find(r => r != socket.id && r != `PhysicianRoom` && r != `PatientRoom`);
+        if (user && chatroomID) {
+            let room = chatrooms.find(r => r.roomID == chatroomID);
+            if (room) {
+                room.users = room.users.filter(u => u != user);
+            } else {
+                console.log(`ERROR: CANNOT FIND ROOM.(socket.on leave)`);
+            }
+            socket.leave(chatroomID);
+            io.to(chatroomID).emit(`leave`, socket.id);
+        } else {
+            console.log(`ERROR: CANNOT FIND ROOM OR USER.(socket.on leave)`);
+        }
     });
 });
 
