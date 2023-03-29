@@ -353,6 +353,7 @@ socket.on("connect", () => {
 
 socket.on("disconnect", () => {
     console.log(`DISCONNECTED WITH SERVER.`);
+    window.location.replace(`/`);//Force the user back to login page
 });
 
 socket.on(`new user list`, (users: Array<User>) => {

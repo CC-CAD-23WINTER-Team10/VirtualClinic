@@ -143,23 +143,28 @@ io.on('connection', function (socket) {
     //The first message sent to the server when open Dashboard
     socket.on(`Hi`, async (username, status) => {
 
-        await db.updateSocketID(socket.id, username);//update the socket id in database so that we can track who is id's owner
-
         let newActiveUser = await db.getOneUser(username);//fetch the data of this user in the database (`firstName lastName lastSocketID kind img title department`)
+        console.log(newActiveUser);
 
-        if (newActiveUser) {
-            newActiveUser.status = status;//add the status property to the user, new connected user will be available by default
+        io.in(newActiveUser.lastSocketID).disconnectSockets(true);//Kick out the previous socket(to prevent the same user from login more than once)
+        
+        await db.updateSocketID(socket.id, username);//update the socket id in database so that we can track who is id's owner
+        
+        let updatedUser = await db.getOneUser(username);
+        console.log(updatedUser);
+        if (updatedUser) {
+            updatedUser.status = status;//add the status property to the user, new connected user will be available by default
 
-            const isPhysician = await db.isPhysician(username)
+            const isPhysician = await db.isPhysician(username);
             if (isPhysician) {
                 //check if this user is physician, so that we can boardcast the new user list according to their role
                 //the patient should not be able to call other patients
                 await socket.join(`PhysicianRoom`);
-                activePhysicians.push(newActiveUser);//push the new active user to the active user array with the data from the database
+                activePhysicians.push(updatedUser);//push the new active user to the active user array with the data from the database
 
             } else {
                 await socket.join(`PatientRoom`);
-                activePatients.push(newActiveUser);//push the new active user to the active user array with the data from the database
+                activePatients.push(updatedUser);//push the new active user to the active user array with the data from the database
             }
             sendNewListToPatients();
             sendNewListToPhysicians();
