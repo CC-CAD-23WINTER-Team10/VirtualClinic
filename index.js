@@ -371,7 +371,8 @@ function requireHTTPS(req, res, next) {
 }
 
 function sendNewListToPatients() {
-    io.in(`PatientRoom`).emit(`new user list`, activePhysicians);
+    const allActiveUser = activePhysicians.concat(activePatients[activePatients.length-1]); //gets all physicians and last patient conected
+    io.in(`PatientRoom`).emit(`new user list`, allActiveUser);
 }
 
 function sendNewListToPhysicians() {

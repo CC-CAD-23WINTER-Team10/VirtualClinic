@@ -60,7 +60,7 @@ let shrinkableBox = document.querySelector(`#shrinkable-box`) as HTMLDivElement;
 let shrinkableBoxFlexContent = shrinkableBox.querySelector(`div`) as HTMLDivElement;
 let expensionButton = shrinkableBox.querySelector(`.expension-button`) as HTMLButtonElement;
 
-var user = document.querySelector(`#user`) as HTMLDivElement;
+var userLogo = document.querySelector(`#user`) as HTMLDivElement;
 
 //SizeObservers
 let bodySizeObserver = new ResizeObserver(e => {
@@ -364,7 +364,7 @@ socket.on(`new user list`, (users: Array<User>) => {
         //console.log(userArray[0]);
         userLog = createUserElement(userArray[0]);
         //console.log(userLog);
-        user.append(userLog);
+        userLogo.append(userLog);
     }
     
     userArray = users.filter(u => u.lastSocketID != socket.id);//Remove the current user from the array.
