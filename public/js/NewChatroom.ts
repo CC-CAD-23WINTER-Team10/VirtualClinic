@@ -14,12 +14,12 @@ import { YesAlertBox, AlertBox } from "./AlertBox.js"
 export class Chatroom {
     socket: any; //A reference to the socket IO
     localStream: MediaStream; //the Local Video stream
-    connections: PConnection[] = []; //A collection of PeerConnection
+    connections: Map<string, PConnection> = new Map(); //A collection of PeerConnection
     muted: boolean;//ture when you don't want to send audio tracks out
     camOff: boolean;//ture when you don't want to send video tracks out
 
-    onRejection: (socketID:string) => void = ()=>{}; //a funtion will be executed when receives a rejection
-    onClose: () => void = ()=>{}; //functions will be executed when the chatroom is closing(with or without any parameters)
+    onRejection: (socketID: string) => void = () => { }; //a funtion will be executed when receives a rejection
+    onClose: () => void = () => { }; //functions will be executed when the chatroom is closing(with or without any parameters)
 
     //Elements in the Chatroom Div
     setting: HTMLDivElement;
@@ -226,19 +226,41 @@ export class Chatroom {
      */
     close() {
         this.socket.emit(`leave`);
-        for (const c of this.connections) {
+
+
+        this.connections.forEach(c => {
             c.close();
-        }
+        })
+        this.connections.clear();
         this.localStream.getTracks().forEach(track => {
             track.stop();
+            console.log(`${track}`);
         });
         this.selfCamButton.disabled = true;
         this.selfMicButton.disabled = true;
-        this.previewContainer.innerHTML = ``;
+
+        for (let index = 0; index < this.previewContainer.children.length; index++) {
+            let element = this.previewContainer.children[index];
+            element.parentElement.removeChild(element);
+        }
+
         this.previewContainer.classList.remove(`dsp-flex`);
         this.previewContainer.classList.add(`dsp-none`);
         this.activeVideo.srcObject = null;
+
+        this.socket.removeAllListeners(`new joiner`);
+        this.socket.removeAllListeners(`You need to provide offer`);
+        this.socket.removeAllListeners(`invitation accepted by`);
+        this.socket.removeAllListeners(`new offer`);
+        this.socket.removeAllListeners(`you answer from`);
+        this.socket.removeAllListeners(`icecandidate from`);
+        this.socket.removeAllListeners(`leave`);
+
+        console.log(`CHAT ROOM IS CLOSING`)
+
+        
         this.onClose();
+
     }
 
     private async showSetting() {
@@ -429,7 +451,7 @@ export class Chatroom {
             this.activeVideo.muted = true;
             this.activeVideo.srcObject = this.localStream;
         } else {
-            const connection = this.connections.find(c => c.socketID == socketID);
+            const connection = this.connections.get(socketID);
             this.activeVideo.srcObject = connection.remoteStream;
             this.activeVideo.muted = false;
         }
@@ -445,6 +467,7 @@ export class Chatroom {
      * @returns a Div element
      */
     createPreview(socketID: string, videoSource?: MediaStream) {
+        console.log(`Creating Preview for ${socketID}`);
         let previewDiv = document.createElement(`div`) as myDiv;
         previewDiv.my_relation = socketID;
         previewDiv.classList.add(`preview`);
@@ -469,6 +492,11 @@ export class Chatroom {
         }
 
         previewDiv.append(controlsDiv, videoCover, videoFrame);
+
+        previewDiv.addEventListener(`click`, e => {
+            console.log(`This preview belongs to ${previewDiv.my_relation}`);
+        })
+
         return previewDiv;
     }
 
@@ -476,22 +504,16 @@ export class Chatroom {
      * It stores the events for socket IO
      */
     socketCommunication() {
-        this.socket.on("connect", () => {
-            console.log(`CONNECTED WITH SERVER. YOUR ID: `, this.socket.id);
-        });
-        this.socket.on("disconnect", () => {
-            console.log(`DISCONNECTED WITH SERVER.`);
-        });
-
         this.socket.on(`invitation accepted by`, async (_id: string) => {
             console.log(`YOUR INVITATION IS ACCEPT BY ${_id}.`);
-        })
+        });
 
 
         this.socket.on(`new joiner`, async (socketID: string) => {
             setTimeout(async () => {
                 //UI section
                 let newPreview = this.createPreview(socketID);
+                console.log(`NEW JOINER:::::Created preview for ${socketID}`);
                 if (this.previewContainer.children.length < 1) {
                     this.previewContainer.classList.remove(`dsp-none`);
                     this.previewContainer.classList.add(`dsp-flex`);
@@ -505,8 +527,10 @@ export class Chatroom {
                 //Connection section
                 let newConnection = new PConnection(socketID, this.localStream, this.socket, addSource);
                 await newConnection.addLocalTracks();
-                this.connections.push(newConnection);
+                this.connections.set(socketID, newConnection);
                 console.log(`WAIT FOR OFFER & ICE FROM USER ${socketID}`);
+
+                console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
 
 
 
@@ -517,62 +541,68 @@ export class Chatroom {
         });
 
         this.socket.on(`You need to provide offer`, async (users: string[]) => {
+            console.log(`You need to provide offer`);
+            setTimeout(async () => {
+            const myID = this.socket.id;
+            const otherUsers = users.filter(u => u != myID);
+            console.log(`Provide Offer:::::Other users:${otherUsers}`)
+            otherUsers.forEach(async socketID => {
 
-            setTimeout(() => {
-                const myID = this.socket.id;
-                const otherUsers = users.filter(u => u != myID);
-
-                otherUsers.forEach(async user => {
-
-                    //UI section
-                    let newPreview = this.createPreview(user);
-                    if (this.previewContainer.children.length < 1) {
-                        this.previewContainer.classList.remove(`dsp-none`);
-                        this.previewContainer.classList.add(`dsp-flex`);
-                    }
-                    this.previewContainer.appendChild(newPreview);
-
-
-                    let addSource = (newStream: MediaStream) => {
-                        newPreview.querySelector(`video`).srcObject = newStream;
-                    };
-
-                    //Connection section
-                    let newConnection = new PConnection(user, this.localStream, this.socket, addSource);
-                    await newConnection.addLocalTracks();
-                    await newConnection.initACall();
-                    this.connections.push(newConnection);
+                //UI section
+                let newPreview = this.createPreview(socketID);
+                console.log(`Provide Offer:::::Created preview for ${socketID}`);
+                if (this.previewContainer.children.length < 1) {
+                    this.previewContainer.classList.remove(`dsp-none`);
+                    this.previewContainer.classList.add(`dsp-flex`);
+                }
+                this.previewContainer.appendChild(newPreview);
 
 
+                let addSource = (newStream: MediaStream) => {
+                    newPreview.querySelector(`video`).srcObject = newStream;
+                };
 
-                });
+                //Connection section
+                let newConnection = new PConnection(socketID, this.localStream, this.socket, addSource);
+                await newConnection.addLocalTracks();
+                await newConnection.initACall();
+                this.connections.set(socketID, newConnection);
+
+                console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
+
+            });
             }, 2000)
 
         });
 
         this.socket.on(`new offer`, (offer: RTCSessionDescriptionInit, remoteID: string) => {
-            let connection = this.connections.find(c => c.socketID == remoteID);
+            console.log(`GET NEW OFFER FROM ${remoteID}`);
+            let connection = this.connections.get(remoteID);
             if (connection != undefined) {
                 connection.setRemoteDescription(offer);
+                connection.listenToICE();
             } else {
                 console.log(`CANNOT FIND CONNECTION WITH ID:${remoteID}. (socket.on(\`new offer\`))`);
             }
 
+            console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
+
         });
 
         this.socket.on(`you answer from`, async (remoteID: string, answer: RTCSessionDescriptionInit) => {
-            let connection = this.connections.find(c => c.socketID == remoteID);
+            let connection = this.connections.get(remoteID);
             if (connection != undefined) {
-                const remoteDesc = new RTCSessionDescription(answer);
-                await connection.peerConnection.setRemoteDescription(remoteDesc);
-                console.log(`Answer is set.`)
+                connection.setAnswer(answer);
+                connection.listenToICE();
             } else {
                 console.log(`CANNOT FIND CONNECTION WITH ID:${remoteID}. (socket.on(\`you answer from\`))`);
             }
+
+            console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
         });
 
         this.socket.on(`icecandidate from`, async (remoteID: string, candidate: RTCIceCandidateInit) => {
-            let connection = this.connections.find(c => c.socketID == remoteID);
+            let connection = this.connections.get(remoteID);
             if (connection != undefined) {
 
                 try {
@@ -589,27 +619,31 @@ export class Chatroom {
         });
 
         //When someone left the chatroom
-        this.socket.on(`leave`, (socketID:string) => {
+        this.socket.on(`leave`, (socketID: string) => {
             //get the applicable PConnection
-            let connetion = this.connections.find(c=>c.socketID == socketID);
+            let connetion = this.connections.get(socketID);
             //close that connection;
             connetion.close();
             //remove the connection
-            this.connections = this.connections.filter(c=>c != connetion);
+            this.connections.delete(socketID);
             //remove the related preview
             for (const p of this.previewContainer.children) {
-                if((p as myDiv).my_relation == socketID){
-                     
+                if ((p as myDiv).my_relation == socketID) {
+
                     p.parentElement.removeChild(p);
+
+                    console.log(`Preview ${(p as myDiv).my_relation} is removed.`);
                     //Once the preview is found, get out of the loop
                     break;
                 }
             }
             //If no previews in the container, hide it
-            if(this.previewContainer.children.length == 0){
+            if (this.previewContainer.children.length == 0) {
                 this.previewContainer.classList.remove(`dsp-flex`);
                 this.previewContainer.classList.add(`dsp-none`);
             }
+
+            console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
         })
 
 

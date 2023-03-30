@@ -65,7 +65,7 @@ class Chatroom {
 }
 
 
-var chatrooms = [];
+
 var chatRoom = {
     roomID: uuidv4(), // Assing roomId
     users: []
@@ -125,17 +125,14 @@ io.on('connection', function (socket) {
 
     //Response when one user disconneting with the server
     socket.on("disconnect", () => {
-        //console.log(`REMOVING ${socket.id} FROM ACTIVE USER ARRAY`);
-        //console.log(`patient?:`,activePatients.filter( p => p.lastSocketID == socket.id));
-        //console.log(`physician?:`,activePhysicians.filter( p => p.lastSocketID == socket.id));
+        
         activePatients = activePatients.filter(p => p.lastSocketID != socket.id);
         activePhysicians = activePhysicians.filter(p => p.lastSocketID != socket.id);
-        //chatrooms.find(r=>r.roomID == )
+       
         sendNewListToPatients();
-        sendNewListToPhysicians(); //sent new list to all physicians
+        sendNewListToPhysicians();
 
-        //console.log(`REMOVED ${socket.id} FROM ACTIVE USER ARRAY`);
-        //console.log(`After Removal:`,activePatients.concat(activePhysicians));
+    
     });
 
 
@@ -144,14 +141,13 @@ io.on('connection', function (socket) {
     socket.on(`Hi`, async (username, status) => {
 
         let newActiveUser = await db.getOneUser(username);//fetch the data of this user in the database (`firstName lastName lastSocketID kind img title department`)
-        console.log(newActiveUser);
 
         io.in(newActiveUser.lastSocketID).disconnectSockets(true);//Kick out the previous socket(to prevent the same user from login more than once)
         
         await db.updateSocketID(socket.id, username);//update the socket id in database so that we can track who is id's owner
         
         let updatedUser = await db.getOneUser(username);
-        console.log(updatedUser);
+        
         if (updatedUser) {
             updatedUser.status = status;//add the status property to the user, new connected user will be available by default
 
@@ -192,15 +188,18 @@ io.on('connection', function (socket) {
 
             //then the server will check if the sender is in a room
             //if not, assgin a room to the sender
-            const roomID = Array.from(socket.rooms).find(r => r != socket.id && r != `PhysicianRoom` && r != `PatientRoom`)
-            console.log(roomID);
+            const roomID = Array.from(socket.rooms).find(r => r != socket.id && r != `PhysicianRoom` && r != `PatientRoom`);
+            
             if (!roomID) {
-                let newChatroom = new Chatroom(Date.now());
-                newChatroom.users.push(sender);
-                socket.join(newChatroom.roomID);
-                chatrooms.push(newChatroom);
-
-            } 
+                console.log(`The Invitation Sender(${socket.id}) Has No Room`);
+                let newID = uuidv4();
+                socket.join(newID);
+                console.log(`Created A New Room(${newID}) For ${socket.id}.`);
+                console.log(`Now Room(${newID}) Has :::: ${io.of("/").adapter.rooms.get(newID)}`);
+            } else {
+                console.log(`The Invitation Sender(${socket.id}) Has Room ${roomID}`);
+                console.log(`Now Room(${roomID}) Has :::: ${io.of("/").adapter.rooms.get(roomID)}`);
+            }
 
             io.to(receiver.lastSocketID).emit(`invitation from`, sender._id, fullName);
 
@@ -212,6 +211,7 @@ io.on('connection', function (socket) {
 
     //the Invitation Receiver Reply Acceptance
     socket.on(`accept invitation from`, async (_id) => {
+        console.log(`Invitation from ${_id} is accepted.`);
         //get the chatroom ID that was assigned by the system
         const invitationSender = await db.getOneUserByID(_id);
         const invitationReceiver = await db.getOneUserBySocket(socket.id);
@@ -219,18 +219,25 @@ io.on('connection', function (socket) {
             //if one of them is not found
             console.log(`DB ERROR: CANNOT FIND USER.(socket.on, accept invitation from)`)
         } else {
+            console.log(`Invi Sender is in ${[...io.of("/").adapter.sids.get(invitationSender.lastSocketID).values()]}`);
+            console.log(`Invi Receiver is in ${[...io.of("/").adapter.sids.get(invitationReceiver.lastSocketID).values()]}`);
             const roomsOfInviSender = Array.from(io.of("/").adapter.sids.get(invitationSender.lastSocketID));
             const chatroomID = roomsOfInviSender.find(r => r != invitationSender.lastSocketID && r != `PhysicianRoom` && r != `PatientRoom`);
             if (chatroomID) {
                 //get the existing users in the room before the new one joins
                 const users = Array.from(io.of("/").adapter.rooms.get(chatroomID));// An array of socket ids without the invitationReceiver
+                console.log(`ROOM ${chatroomID} has user :: ${io.of("/").adapter.rooms.get(chatroomID)}`);
                 //send message to users exsiting in the room a message to start peer connection estabilshment
                 io.to(chatroomID).emit(`new joiner`, socket.id);//From here they communicate with socketID;
+                console.log(`EMIT::::: NEW JOINER.`)
                 //send back to the invitation sender
                 io.to(invitationSender.lastSocketID).emit(`invitation accepted by`, invitationReceiver._id);//First chat room IO for client-side
                 //join the room
                 socket.join(chatroomID);
-                (chatrooms.find(r => r.roomID == chatroomID)).users.push(invitationReceiver);
+                
+
+                console.log(`Invi Sender is in ${[...io.of("/").adapter.sids.get(invitationSender.lastSocketID).values()]}`);
+                console.log(`Invi Receiver is in ${[...io.of("/").adapter.sids.get(invitationReceiver.lastSocketID).values()]}`);
 
                 //send message to the invitation receiver to start peer connection estabilshment
                 socket.emit(`You need to provide offer`, users);//From here they communicate with socketID;
@@ -268,11 +275,11 @@ io.on('connection', function (socket) {
      * Chat Room IO
      */
     // firts message from the user when clicks the call button(OLD CHATROOM ONLY)
+    
     socket.on('join a chat room', function () {
         socket.join(`${chatRoom.roomID}`);
         const rooms = io.of("/").adapter.rooms;
         const users = rooms.get(chatRoom.roomID);
-        console.log(users.size);  //  to test how many have entered the room
 
         if (users.size < 2) {
             //get join message from the first one in the chat room
@@ -288,8 +295,9 @@ io.on('connection', function (socket) {
         }
 
     });
-
-    socket.on(`I provide offer`, function (offer, socketID) {
+    
+    socket.on(`I provide offer`, (offer, socketID) => {
+        console.log(`${socket.id} PROVIDE OFFER TO ${socketID}`);
         io.to(socketID).emit(`new offer`, offer, socket.id);
     });
 
@@ -309,22 +317,26 @@ io.on('connection', function (socket) {
     socket.on(`leave`, async () => {
         const user = await db.getOneUserBySocket(socket.id);
         const roomsOfUser = Array.from(io.of("/").adapter.sids.get(socket.id));
-        console.log(user)
-        console.log(roomsOfUser);
-        const chatroomID = roomsOfUser.find(r => r != socket.id && r != `PhysicianRoom` && r != `PatientRoom`);
+        console.log(user.lastSocketID, `is leaving`);
+        console.log(`He/She is in `,roomsOfUser);
+        const chatroomID = roomsOfUser.find(r => (r != socket.id) && r != `PhysicianRoom` && r != `PatientRoom`);
+        console.log(`The chatroom he/she is gonna leave is:::: ${chatroomID}`)
         if (user && chatroomID) {
-            let room = chatrooms.find(r => r.roomID == chatroomID);
-            if (room) {
-                room.users = room.users.filter(u => u != user);
-            } else {
-                console.log(`ERROR: CANNOT FIND ROOM.(socket.on leave)`);
-            }
             socket.leave(chatroomID);
+            const restingUsers = io.of("/").adapter.rooms.get(chatroomID);
+            let message = `empty`;
+            if(restingUsers){
+                message = Array.from(restingUsers);
+            }
+            console.log(`After leaving(Socket Room): `, message);
             io.to(chatroomID).emit(`leave`, socket.id);
         } else {
             console.log(`ERROR: CANNOT FIND ROOM OR USER.(socket.on leave)`);
         }
     });
+
+
+    
 });
 
 /**

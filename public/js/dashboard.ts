@@ -308,6 +308,7 @@ function setCallButton(user: User, callButton: HTMLButtonElement) {
                         chatroom = null; //remove Chatroom Object to release rescources;
                         currentStatus = previousStatus;// go back to previous status
                         socket.emit(`Status Change`, currentStatus);//notify server the new status
+                        console.log(`CHAT ROOM IS CLOSED.`);
                     }
                 }
 
@@ -460,6 +461,7 @@ socket.on("invitation from", (_id: string, name: string) => {
             chatroom = null; //remove Chatroom Object to release rescources;
             currentStatus = previousStatus;// go back to previous status
             socket.emit(`Status Change`, currentStatus);//notify server the new status
+            console.log(`CHAT ROOM IS CLOSED.`);
         }
 
 

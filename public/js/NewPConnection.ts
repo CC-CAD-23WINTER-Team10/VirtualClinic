@@ -3,6 +3,7 @@
  * the configuration of the ICE Servers. This class will be responsible for SDPs and ICE candidates exchanges.  
  */
 export class PConnection {
+    timeMark: string;
     socketID: string;
     localStream: MediaStream;
     remoteStream: MediaStream;
@@ -27,30 +28,24 @@ export class PConnection {
         this.socket = socket;
         this.remoteStreamSetterCallback = remoteStreamSetterCallback;
         this.peerConnection = new RTCPeerConnection(this.configuration);
+        this.timeMark = (new Date(Date.now())).toUTCString();
 
 
         //FOR DEBUG
         this.peerConnection.addEventListener("iceconnectionstatechange", (event) => {
-            console.log(`iceconnectionstatechange: `, this.peerConnection.iceConnectionState);
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: ICE Connection State: `, this.peerConnection.iceConnectionState);
         });
         //FOR DEBUG
         this.peerConnection.addEventListener("icegatheringstatechange", (event) => {
-            console.log(`icegatheringstatechange: `, this.peerConnection.iceGatheringState);
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: ICE Gathering State: `, this.peerConnection.iceGatheringState);
         });
         //FOR DEBUG
         this.peerConnection.addEventListener("signalingstatechange", (event) => {
-            console.log(`signalingstatechange: `, this.peerConnection.signalingState);
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: Signaling State: `, this.peerConnection.signalingState);
         });
 
 
-        // Listen for ICE candidates and send to the other peer
-        this.peerConnection.addEventListener('icecandidate', event => {
-            if (event.candidate) {
-                //console.log(`Get ICE FROM STUN SERVER.`);
-                socket.emit('new-ice-candidate to', this.socketID, event.candidate);
-                //console.log(`SEND ICE TO USER ${this.socketID}.`);
-            }
-        });
+        
 
         // Listen to enable the streaming video and audio on UI
         this.peerConnection.addEventListener('track', async (event) => {
@@ -70,20 +65,20 @@ export class PConnection {
         //In this case, check the local stream existance first,
         //if not, just not add the tracks and they can still establish the connection for listening to others
         if (this.localStream) {
-            console.log(`START ADDING LOCAL TRACKS.`);
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: START ADDING LOCAL TRACKS.`);
 
             let localTracks = this.localStream.getTracks();
 
             localTracks.forEach(track => {
-                console.log(track);
+                //console.log(track);
                 this.peerConnection.addTrack(track, this.localStream);
-                console.log(`track added`);
+                //console.log(`track added`);
 
             });
 
-            console.log(`Local Tracks is added to connection(${this.socketID})`);
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: Local Tracks is added.`);
         } else {
-            console.log(`NO LOCAL TRACK IS AVAILABLE RIGHT NOW`)
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: NO LOCAL TRACK IS AVAILABLE RIGHT NOW`)
         }
 
 
@@ -96,13 +91,13 @@ export class PConnection {
      * to provide an offer to other peer(existing users in the chatroom)
      */
     async initACall() {
-        console.log(`INITIALISE A CALL.`);
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: INITIALISE A CALL.`);
 
         let offer = await this.peerConnection.createOffer();
         await this.peerConnection.setLocalDescription(offer);
 
         this.socket.emit(`I provide offer`, offer, this.socketID);
-        console.log(`END OF CALL INITIALISATION.`);
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: END OF CALL INITIALISATION.`);
 
     }
 
@@ -112,13 +107,22 @@ export class PConnection {
      * @param offer the SDP from the offer provider
      */
     async setRemoteDescription(offer: RTCSessionDescriptionInit) {
-        console.log(`GET OFFER FROM CALLER.`);
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: GET OFFER FROM CALLER.`);
         this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await this.peerConnection.createAnswer();
         await this.peerConnection.setLocalDescription(answer);
 
         this.socket.emit(`my answer to`, this.socketID, answer);
-        console.log(`REPLY TO CALL WITH ANSWER.`);
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: REPLY TO CALL WITH ANSWER.`);
+
+    }
+
+    async setAnswer(answer: RTCSessionDescriptionInit) {
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: GET ANSWER FROM PEER.`);
+        const remoteDesc = new RTCSessionDescription(answer);
+        await this.peerConnection.setRemoteDescription(remoteDesc);
+
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: ANSWER IS SET.`);
 
     }
 
@@ -136,6 +140,19 @@ export class PConnection {
         if (callback) {
             callback(stream);
         }
+    }
+
+
+
+    listenToICE(){
+        // Listen for ICE candidates and send to the other peer
+        this.peerConnection.addEventListener('icecandidate', event => {
+            if (event.candidate) {
+                //console.log(`Get ICE FROM STUN SERVER.`);
+                this.socket.emit('new-ice-candidate to', this.socketID, event.candidate);
+                //console.log(`SEND ICE TO USER ${this.socketID}.`);
+            }
+        });
     }
 
     /**
