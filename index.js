@@ -50,27 +50,6 @@ app.use(
 );
 
 
-/**
- * Temporary codes --This will be replace by Database logic code
- */
-
-
-class Chatroom {
-    roomID = uuidv4();
-    users = [];
-    startTime;
-    constructor(startTime) {
-        this.startTime = startTime;
-    }
-}
-
-
-
-var chatRoom = {
-    roomID: uuidv4(), // Assing roomId
-    users: []
-};
-
 
 /*
 * Routes
@@ -96,9 +75,6 @@ app.post(`/auth`, async (req, res) => {
     }
 });
 
-app.get(`/chat`, (req, res) => {
-    res.render(`chatroom`);
-});
 
 app.get(`/dashboard`, (req, res) => {
 
@@ -274,27 +250,7 @@ io.on('connection', function (socket) {
     /**
      * Chat Room IO
      */
-    // firts message from the user when clicks the call button(OLD CHATROOM ONLY)
     
-    socket.on('join a chat room', function () {
-        socket.join(`${chatRoom.roomID}`);
-        const rooms = io.of("/").adapter.rooms;
-        const users = rooms.get(chatRoom.roomID);
-
-        if (users.size < 2) {
-            //get join message from the first one in the chat room
-            socket.emit(`You are the first one`);
-        } else {
-            //get join message from the later comer
-
-            //send the comer id to the existing users
-            socket.to(`${chatRoom.roomID}`).emit(`new joiner`, socket.id);
-
-            //send back the request for offer(s) with the existing user ids (including the comer)
-            socket.emit(`You need to provide offer`, Array.from(users));
-        }
-
-    });
     
     socket.on(`I provide offer`, (offer, socketID) => {
         console.log(`${socket.id} PROVIDE OFFER TO ${socketID}`);

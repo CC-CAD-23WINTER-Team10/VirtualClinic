@@ -1,9 +1,14 @@
+/**
+ * A Class that contains a Peer Connection, the socket ID for exchange of SDPs and ICE candidate, and
+ * the configuration of the ICE Servers. This class will be responsible for SDPs and ICE candidates exchanges.  
+ */
 export class PConnection {
-    id: string;
+    timeMark: string;
+    socketID: string;
     localStream: MediaStream;
     remoteStream: MediaStream;
-    remoteVideoFrame:HTMLVideoElement;
-    socket: any;
+    remoteStreamSetterCallback: (newStream: MediaStream) => void;//(See explaination of setRemoteStream())
+    socket: any; //A reference to the socket..IO server
     configuration = {
         //STUN Servers
         iceServers: [
@@ -14,84 +19,157 @@ export class PConnection {
             }
         ]
     };
-    peerConnection = new RTCPeerConnection(this.configuration); // WebRTC connection object
+    peerConnection: RTCPeerConnection; // WebRTC connection object
 
 
-    constructor(id: string, localStream: MediaStream, socket: any, remoteVideoFrame:HTMLVideoElement) {
-        this.id = id;
+    constructor(id: string, localStream: MediaStream, socket: any, remoteStreamSetterCallback?: (newStream: MediaStream) => void) {
+        this.socketID = id;
         this.localStream = localStream;
         this.socket = socket;
-        this.remoteVideoFrame = remoteVideoFrame;
+        this.remoteStreamSetterCallback = remoteStreamSetterCallback;
+        this.peerConnection = new RTCPeerConnection(this.configuration);
+        this.timeMark = (new Date(Date.now())).toUTCString();
 
 
-        // Listen for ICE candidates and send to the other peer
-        this.peerConnection.addEventListener('icecandidate', event => {
-            if (event.candidate) {
-                console.log(`Get ICE FROM STUN SERVER.`);
-                socket.emit('new-ice-candidate to', this.id, event.candidate);
-                console.log(`SEND ICE TO USER ${this.id}.`);
-            }
+        //FOR DEBUG
+        this.peerConnection.addEventListener("iceconnectionstatechange", (event) => {
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: ICE Connection State: `, this.peerConnection.iceConnectionState);
         });
+        //FOR DEBUG
+        this.peerConnection.addEventListener("icegatheringstatechange", (event) => {
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: ICE Gathering State: `, this.peerConnection.iceGatheringState);
+        });
+        //FOR DEBUG
+        this.peerConnection.addEventListener("signalingstatechange", (event) => {
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: Signaling State: `, this.peerConnection.signalingState);
+        });
+
+
+        
 
         // Listen to enable the streaming video and audio on UI
         this.peerConnection.addEventListener('track', async (event) => {
-            console.log(`Get TRACK INFO FROM PEER CONNECTION.`);
-            [this.remoteStream] = event.streams;
-            this.remoteVideoFrame.srcObject = this.remoteStream;
-            console.log(`Set Remote Video Stream`);
+            //console.log(`Get TRACK INFO FROM PEER CONNECTION.`);
+            this.setRemoteStream(event.streams[0], this.remoteStreamSetterCallback);
+            //console.log(`Set Remote Video Stream`);
         });
 
-        // Listen connection changes
-        this.peerConnection.addEventListener('connectionstatechange', event => {
-            console.log(`CONNECTION STATE CHANGED`);
-            if (this.peerConnection.connectionState === 'connected') {
-                // Peers connected!
-                console.log(`Peers connected!!!!!`)
-        
-            }
-        });
 
     }
 
-
+    /**
+     * Put the local video and audio tracks into the peer connection
+     */
     async addLocalTracks() {
-        console.log(`START ADDING LOCAL TRACKS.`);
-        let localTracks = this.localStream.getTracks();
+        //Someone might not grant access to media or the media is occupied by other applications
+        //In this case, check the local stream existance first,
+        //if not, just not add the tracks and they can still establish the connection for listening to others
+        if (this.localStream) {
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: START ADDING LOCAL TRACKS.`);
 
-        localTracks.forEach(track => {
+            let localTracks = this.localStream.getTracks();
 
-            this.peerConnection.addTrack(track, this.localStream);
-            console.log(`track added`);
+            localTracks.forEach(track => {
+                //console.log(track);
+                this.peerConnection.addTrack(track, this.localStream);
+                //console.log(`track added`);
 
-        });
+            });
 
-        console.log(`Local Tracks is added to connection(${this.id})`);
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: Local Tracks is added.`);
+        } else {
+            console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: NO LOCAL TRACK IS AVAILABLE RIGHT NOW`)
+        }
+
+
     }
 
-    // To provide an offer to other peer
-    async initACall() {
-        console.log(`INITIALISE A CALL.`);
-        /**
-         * Set Offer
-         */
-        let offer = await this.peerConnection.createOffer();
 
+
+    /**
+     * For the person who is the lastest participant
+     * to provide an offer to other peer(existing users in the chatroom)
+     */
+    async initACall() {
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: INITIALISE A CALL.`);
+
+        let offer = await this.peerConnection.createOffer();
         await this.peerConnection.setLocalDescription(offer);
 
-        //console.log(`Offer: `, offer);
+        this.socket.emit(`I provide offer`, offer, this.socketID);
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: END OF CALL INITIALISATION.`);
 
-        this.socket.emit(`I provide offer`, offer, this.id);
-        console.log(`END OF CALL INITIALISATION.`);
     }
 
-    // Sending SDPs to other peer
+
+    /**
+     * For those who are already in the chatroom, send SDPs to other peer(Offer Provider)
+     * @param offer the SDP from the offer provider
+     */
     async setRemoteDescription(offer: RTCSessionDescriptionInit) {
-        console.log(`GET OFFER FROM CALLER.`);
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: GET OFFER FROM CALLER.`);
         this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await this.peerConnection.createAnswer();
         await this.peerConnection.setLocalDescription(answer);
 
-        this.socket.emit(`my answer to`, this.id, answer);
-        console.log(`REPLY TO CALL WITH ANSWER.`);
+        this.socket.emit(`my answer to`, this.socketID, answer);
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: REPLY TO CALL WITH ANSWER.`);
+
+    }
+
+    async setAnswer(answer: RTCSessionDescriptionInit) {
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: GET ANSWER FROM PEER.`);
+        const remoteDesc = new RTCSessionDescription(answer);
+        await this.peerConnection.setRemoteDescription(remoteDesc);
+
+        console.log(`CONNECTION ${this.socketID} with ${this.timeMark} :::: ANSWER IS SET.`);
+
+    }
+
+
+    /**
+     * Remote stream setter. When the system set the remote stream, a function will execute.
+     * A new remote stream will pass into the funtion.
+     * This function is mainly for communication with the Chatroom Class. When the connection receives
+     * a new media stream, it will pass the new stream to Chatroom Class to put the stream on the screen.
+     * @param stream the new remote stream
+     * @param callback the funtion to execute after setting the remote stream
+     */
+    setRemoteStream(stream: MediaStream, callback?: (newStream: MediaStream) => void) {
+        this.remoteStream = stream;
+        if (callback) {
+            callback(stream);
+        }
+    }
+
+
+
+    listenToICE(){
+        // Listen for ICE candidates and send to the other peer
+        this.peerConnection.addEventListener('icecandidate', event => {
+            if (event.candidate) {
+                //console.log(`Get ICE FROM STUN SERVER.`);
+                this.socket.emit('new-ice-candidate to', this.socketID, event.candidate);
+                //console.log(`SEND ICE TO USER ${this.socketID}.`);
+            }
+        });
+    }
+
+    /**
+     * Stop the peer conncetion.
+     * Besides, it stops media tracks, removes all references;
+     */
+    close() {
+        this.peerConnection.close();
+        this.remoteStream.getTracks().forEach(t=>{
+            t.stop();
+        })
+        this.socketID = null;
+        this.localStream = null;
+        this.remoteStream = null;
+        this.remoteStreamSetterCallback = null;
+        this.socket = null;
+        this.configuration = null;
+        this.peerConnection = null;
     }
 }

@@ -2,7 +2,7 @@
 import { User, Status, myDiv, } from "./Modules.js";
 import { YesAlertBox } from "./AlertBox.js"
 //@ts-ignore
-import { Chatroom } from "./NewChatroom.js";
+import { Chatroom } from "./Chatroom.js";
 /* 
 * Dashboard
 */
