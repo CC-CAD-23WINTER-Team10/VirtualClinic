@@ -51,7 +51,9 @@
       ```
 
 + STEP 8: Open your browser(Firefox,Chorme,etc.), enter `localhost`
+   - **Test Recommandation**: Open one normal version of browser then login with one account, then open one private version of browser then login with another account. For example, Open a normal Firefox, use one tab to login 001, then open a private mode of Firefox, then open one tab in the private mode to login 002. So, both sides can access media without conflict.
    
+   - **!!IMPORTANT NOTE!!** DON'T USE TWO OR MORE TABS IN THE SAME BROWSER TO LOG IN. THE SESSION WILL BE REPLACED BY THE LAST LOGIN, THEREFORE THE SYSTEM MAY KICK OUT THE USER.
    
 
 [^1]: This will run typescript compiler to generate the javascript files then start the server.
