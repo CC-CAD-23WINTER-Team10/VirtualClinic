@@ -381,8 +381,12 @@ main {
     border-radius: 5px;
 }
 
-#setting button:hover {
+#setting button:enabled:hover {
     box-shadow: #ffffff 0 0 6px 0;
+}
+
+#setting button:disabled {
+    background-color: #7d7d7d;
 }
 /**************************************************
 **Preview Section
@@ -504,7 +508,7 @@ main {
     justify-content: center;
     align-items: center;
 }
-.control-button:hover {
+.control-button:enabled:hover {
     box-shadow:rgb(255 255 255) 0px 0px 7px 0px;
 }
 

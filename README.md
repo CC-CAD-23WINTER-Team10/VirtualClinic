@@ -50,6 +50,10 @@
       npm run dev-nm
       ```
 
++ STEP 8: Open your browser(Firefox,Chorme,etc.), enter `localhost`
+   
+   
+
 [^1]: This will run typescript compiler to generate the javascript files then start the server.
 [^2]: This will run typescript compiler to generate the javascript files then start nodemon.
 [^3]: This will run tsc-watch and nodemon.

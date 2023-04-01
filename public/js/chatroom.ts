@@ -17,6 +17,9 @@ export class Chatroom {
     connections: Map<string, PConnection> = new Map(); //A collection of PeerConnection
     muted: boolean;//ture when you don't want to send audio tracks out
     camOff: boolean;//ture when you don't want to send video tracks out
+    pinedMedia: string; //the socket id of the pined media owner
+    settingOnce: boolean = false;//to mark wether the user set the device. If not the local stream will not be sent.
+    settingIsOpened: boolean = false;//to mark wether the setting is opened.
 
     onRejection: (socketID: string) => void = () => { }; //a funtion will be executed when receives a rejection
     onClose: () => void = () => { }; //functions will be executed when the chatroom is closing(with or without any parameters)
@@ -27,102 +30,12 @@ export class Chatroom {
     activeFrame: myDiv;
     activeVideo: HTMLVideoElement;
     settingButton: HTMLButtonElement;
-    screenButton: HTMLButtonElement;
     selfMicButton: HTMLButtonElement;
     selfCamButton: HTMLButtonElement;
     selfExitButton: HTMLButtonElement;
 
 
 
-    constructor(socket: any, chatroomDiv: HTMLDivElement) {
-        this.socket = socket;
-        this.socketCommunication();//Start Listening to the socket events
-
-        //Pass the references of the chatroom elements into this object
-        this.previewContainer = chatroomDiv.querySelector(`.preview-container`)!;
-        this.activeFrame = chatroomDiv.querySelector(`.active-speaker`)!;
-        this.activeVideo = this.activeFrame.querySelector(`video`)!;
-        this.settingButton = chatroomDiv.querySelector(`#self-setting`)!;
-        this.screenButton = chatroomDiv.querySelector(`#self-screen`)!;
-        this.selfMicButton = chatroomDiv.querySelector(`#self-mic`)!;
-        this.selfCamButton = chatroomDiv.querySelector(`#self-cam`)!;
-        this.selfExitButton = chatroomDiv.querySelector(`#self-exit`)!;
-        this.setting = chatroomDiv.querySelector(`#setting`)!;
-
-        //set Setting button OnClick Event
-        this.settingButton.addEventListener(`click`, () => {
-            this.showSetting();
-        })
-
-        //set Exit button onClick Event
-        this.selfExitButton.addEventListener(`click`, () => {
-            this.close();
-        })
-
-
-    }
-    //
-    readonly chatroomHTML: string = `
-    <div class="box dsp-none" id="chatroom">
-            <div class="box dsp-none" id="setting">
-                <div>
-                    <div>Audio Device:</div> <div><select name="" id="audio-selector"></select></div>
-                    <div>Video Device:</div> <div><select name="" id="video-selector"></select></div>
-                </div>
-                <div>
-                    <button id="selector-apply">Apply</button> <button id="selector-cancel">Cancel</button>
-                </div>
-                
-            </div>
-            <div class="preview-container dsp-none scrollale">
-                 
-            </div>
-            
-
-            <div class="active-speaker">
-                
-                <div class="video-cover dsp-flex f-end">
-
-                    <div class="self-controls">
-                        <button class="control-button" id="self-setting" title="Setting">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M0 416c0-17.7 14.3-32 32-32l54.7 0c12.3-28.3 40.5-48 73.3-48s61 19.7 73.3 48L480 384c17.7 0 32 14.3 32 32s-14.3 32-32 32l-246.7 0c-12.3 28.3-40.5 48-73.3 48s-61-19.7-73.3-48L32 448c-17.7 0-32-14.3-32-32zm192 0a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zM384 256a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zm-32-80c32.8 0 61 19.7 73.3 48l54.7 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-54.7 0c-12.3 28.3-40.5 48-73.3 48s-61-19.7-73.3-48L32 288c-17.7 0-32-14.3-32-32s14.3-32 32-32l246.7 0c12.3-28.3 40.5-48 73.3-48zM192 64a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm73.3 0L480 64c17.7 0 32 14.3 32 32s-14.3 32-32 32l-214.7 0c-12.3 28.3-40.5 48-73.3 48s-61-19.7-73.3-48L32 128C14.3 128 0 113.7 0 96S14.3 64 32 64l86.7 0C131 35.7 159.2 16 192 16s61 19.7 73.3 48z"/></svg>
-                        </button>
-
-                        <button class="control-button" id="self-screen" disabled title="">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
-                                <path d="M32 32C14.3 32 0 46.3 0 64v96c0 17.7 14.3 32 32 32s32-14.3 32-32V96h64
-                                c17.7 0 32-14.3 32-32s-14.3-32-32-32H32zM64 352c0-17.7-14.3-32-32-32s-32 14.3-32 32
-                                v96c0 17.7 14.3 32 32 32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H64V352zM320 32c-17.7 0-32 14.3-32 32
-                                s14.3 32 32 32h64v64c0 17.7 14.3 32 32 32s32-14.3 32-32V64c0-17.7-14.3-32-32-32H320zM448 352
-                                c0-17.7-14.3-32-32-32s-32 14.3-32 32v64H320c-17.7 0-32 14.3-32 32s14.3 32 32 32h96c17.7 0 32-14.3 32-32V352z"/>
-                                </svg>
-                        </button>
-
-                        <button class="control-button" id="self-mic" disabled>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512"><path d="M336 192h-16c-8.84 0-16 7.16-16 16v48c0 74.8-64.49 134.82-140.79 127.38C96.71 376.89 48 317.11 48 250.3V208c0-8.84-7.16-16-16-16H16c-8.84 0-16 7.16-16 16v40.16c0 89.64 63.97 169.55 152 181.69V464H96c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h160c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16h-56v-33.77C285.71 418.47 352 344.9 352 256v-48c0-8.84-7.16-16-16-16zM176 352c53.02 0 96-42.98 96-96h-85.33c-5.89 0-10.67-3.58-10.67-8v-16c0-4.42 4.78-8 10.67-8H272v-32h-85.33c-5.89 0-10.67-3.58-10.67-8v-16c0-4.42 4.78-8 10.67-8H272v-32h-85.33c-5.89 0-10.67-3.58-10.67-8v-16c0-4.42 4.78-8 10.67-8H272c0-53.02-42.98-96-96-96S80 42.98 80 96v160c0 53.02 42.98 96 96 96z"/></svg>
-                        </button>
-    
-                        <button class="control-button" id="self-cam" disabled>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640.41 512.62">
-                                <path d="m224.41,141.83L45.88,3.83C27.16-10.23,13.92,21.58,3.78,31.91c-5.42,6.97-4.17,17.02,2.81,22.45l588.36,454.73c18.71,14.07,31.97-17.76,42.1-28.08,5.41-6.97,4.16-17.02-2.82-22.45"/>
-                                <path d="m0,124.6v276.1c0,3.18.32,20.12,14,33.8,8.65,8.65,20.6,14,33.8,14h288.4c10.22-2.29,35.94-9.47,44.12-29.37m195.68-47.12v-243.71c0-25.4-29.1-40.4-50.4-25.8l-109.6,75.6v70.37m-32-24.93c0-37.08,0-74.16,0-111.24,0-3.18-.32-20.12-14-33.8-13.68-13.68-30.62-14-33.8-14-55.39,0-108.42-.84-157.51.13"/>
-                              </svg>
-                        
-                        </button>
-    
-                        <button class="control-button" id="self-exit" disabled>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M497 273L329 441c-15 15-41 4.5-41-17v-96H152c-13.3 0-24-10.7-24-24v-96c0-13.3 10.7-24 24-24h136V88c0-21.4 25.9-32 41-17l168 168c9.3 9.4 9.3 24.6 0 34zM192 436v-40c0-6.6-5.4-12-12-12H96c-17.7 0-32-14.3-32-32V160c0-17.7 14.3-32 32-32h84c6.6 0 12-5.4 12-12V76c0-6.6-5.4-12-12-12H96c-53 0-96 43-96 96v192c0 53 43 96 96 96h84c6.6 0 12-5.4 12-12z"/></svg>
-    
-    
-                        </button>
-    
-                    </div>
-
-                </div>
-                <video autoplay playsinline></video>
-            </div>
-        </div>
-    `;
     //Button SVGs for UI Changes
     readonly pinSVG: string = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
     <path d="M298.028 214.267L285.793 96H328c13.255 0 24-10.745 24-24V24c0-13.255-10.745-24-24-24
@@ -172,20 +85,49 @@ export class Chatroom {
     c10.22-2.29,35.94-9.47,44.12-29.37m195.68-47.12v-243.71c0-25.4-29.1-40.4-50.4-25.8l-109.6,75.6
     v70.37m-32-24.93c0-37.08,0-74.16,0-111.24,0-3.18-.32-20.12-14-33.8-13.68-13.68-30.62-14-33.8-14-55.39,0-108.42-.84-157.51.13"/>
     </svg>`;
-    readonly fullScreenSVG: string = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
-    <path d="M32 32C14.3 32 0 46.3 0 64v96c0 17.7 14.3 32 32 32s32-14.3 32-32V96h64
-    c17.7 0 32-14.3 32-32s-14.3-32-32-32H32zM64 352c0-17.7-14.3-32-32-32s-32 14.3-32 32
-    v96c0 17.7 14.3 32 32 32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H64V352zM320 32c-17.7 0-32 14.3-32 32
-    s14.3 32 32 32h64v64c0 17.7 14.3 32 32 32s32-14.3 32-32V64c0-17.7-14.3-32-32-32H320zM448 352
-    c0-17.7-14.3-32-32-32s-32 14.3-32 32v64H320c-17.7 0-32 14.3-32 32s14.3 32 32 32h96c17.7 0 32-14.3 32-32V352z"/>
-    </svg>`;
-    readonly browserScreenSVG: string = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
-    <path d="M160 64c0-17.7-14.3-32-32-32s-32 14.3-32 32v64H32c-17.7 0-32 14.3-32 32s14.3 32 32 32
-    h96c17.7 0 32-14.3 32-32V64zM32 320c-17.7 0-32 14.3-32 32s14.3 32 32 32H96v64c0 17.7 14.3 32 32 32
-    s32-14.3 32-32V352c0-17.7-14.3-32-32-32H32zM352 64c0-17.7-14.3-32-32-32s-32 14.3-32 32v96
-    c0 17.7 14.3 32 32 32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H352V64zM320 320c-17.7 0-32 14.3-32 32v96
-    c0 17.7 14.3 32 32 32s32-14.3 32-32V384h64c17.7 0 32-14.3 32-32s-14.3-32-32-32H320z"/>
-    </svg>`;
+
+
+    constructor(socket: any, chatroomDiv: HTMLDivElement) {
+        this.socket = socket;
+        this.setSocketCommunication();//Start Listening to the socket events
+
+        //Pass the references of the chatroom elements into this object
+        this.previewContainer = chatroomDiv.querySelector(`.preview-container`)!;
+        this.activeFrame = chatroomDiv.querySelector(`.active-speaker`)!;
+        this.activeVideo = this.activeFrame.querySelector(`video`)!;
+        this.settingButton = chatroomDiv.querySelector(`#self-setting`)!;
+        this.selfMicButton = chatroomDiv.querySelector(`#self-mic`)!;
+        this.selfCamButton = chatroomDiv.querySelector(`#self-cam`)!;
+        this.selfExitButton = chatroomDiv.querySelector(`#self-exit`)!;
+        this.setting = chatroomDiv.querySelector(`#setting`)!;
+
+        this.muted = false;
+        this.camOff = false;
+
+        //set Setting button OnClick Event
+        this.settingButton.addEventListener(`click`, () => {
+            this.showSetting();
+        })
+
+        //set Exit button onClick Event
+        this.selfExitButton.addEventListener(`click`, () => {
+            this.close();
+        })
+
+        //set the Mute button Event
+        this.selfMicButton.addEventListener(`click`, () => {
+            this.toggleMute();
+        })
+
+        //set the cam button Event
+        this.selfCamButton.addEventListener(`click`, () => {
+            this.toggleCam();
+        })
+
+
+    }
+
+
 
 
 
@@ -193,7 +135,7 @@ export class Chatroom {
      * The start point of the chatroom
      */
     async start() {
-
+        this.activeFrame.my_relation = this.socket.id;
         //get the media access permission and show a default media on screen
         let permission = await this.getMediaPermission();
 
@@ -202,14 +144,7 @@ export class Chatroom {
         if (permission) {
             //delay the setting show-up
             setTimeout(() => { this.showSetting(); }, 1000);
-            //When it gets the audio tracks, enable the mute-button.
-            if (this.localStream.getAudioTracks()) {
-                this.selfMicButton.disabled = false;
-            }
-            //When it gets the video tracks, enable the mute-button.
-            if (this.localStream.getVideoTracks()) {
-                this.selfCamButton.disabled = false;
-            }
+
 
         } else {
             let alert = new AlertBox(`You may not grant the access to audio and/or video device.`, `Media Access Permission`);
@@ -225,29 +160,46 @@ export class Chatroom {
      * 6. excute onClose functions
      */
     close() {
+        //tell the server leaving
         this.socket.emit(`leave`);
 
-
+        //close and clear all Peer Connections
         this.connections.forEach(c => {
             c.close();
         })
         this.connections.clear();
-        this.localStream.getTracks().forEach(track => {
+        //Stop accessing the mic and cam
+        this.localStream?.getTracks().forEach(track => {
             track.stop();
-            console.log(`${track}`);
         });
+
+        //put the buttons to default state
         this.selfCamButton.disabled = true;
         this.selfMicButton.disabled = true;
-
+        //remove all registered event listeners for buttons
+        this.settingButton.removeEventListener(`click`, () => {
+            this.showSetting();
+        });
+        this.selfExitButton.removeEventListener(`click`, () => {
+            this.close();
+        })
+        this.selfMicButton.removeEventListener(`click`, () => {
+            this.toggleMute();
+        })
+        this.selfCamButton.removeEventListener(`click`, () => {
+            this.toggleCam();
+        })
+        //remove all previews
         for (let index = 0; index < this.previewContainer.children.length; index++) {
             let element = this.previewContainer.children[index];
             element.parentElement.removeChild(element);
         }
-
+        //hide preview container
         this.previewContainer.classList.remove(`dsp-flex`);
         this.previewContainer.classList.add(`dsp-none`);
+        //remove media source 
         this.activeVideo.srcObject = null;
-
+        //remove socket message listeners
         this.socket.removeAllListeners(`new joiner`);
         this.socket.removeAllListeners(`You need to provide offer`);
         this.socket.removeAllListeners(`invitation accepted by`);
@@ -258,12 +210,16 @@ export class Chatroom {
 
         console.log(`CHAT ROOM IS CLOSING`)
 
-        
+
         this.onClose();
 
     }
 
+    /**
+     * To open the setting dialogue in the chat room
+     */
     private async showSetting() {
+        this.settingIsOpened = true;
         //Link elements for setting dialogue
         let audioSelector = this.setting.querySelector(`#audio-selector`) as HTMLSelectElement;
         let videoSelector = this.setting.querySelector(`#video-selector`) as HTMLSelectElement;
@@ -272,10 +228,12 @@ export class Chatroom {
         //retrieve the cameras and mics from the system
         let cameras = await this.getConnectedDevices('videoinput');
         let mics = await this.getConnectedDevices('audioinput');
+        console.log(cameras);
+        console.log(mics);
 
-        const previousActiveSpeaker = this.activeVideo.srcObject;
+        const previousCentrePlayerOwner = this.activeFrame.my_relation;
 
-        this.setActiveSpeaker(this.socket.id);//put your cam on the speaker frame to preview
+        this.switchVideoPlayersToCentre(this.socket.id)//put your cam on the centre player to preview
 
         //clear options
         audioSelector.innerHTML = ``;
@@ -285,22 +243,14 @@ export class Chatroom {
         //      WITHOUT LABEL.
 
         //GENERATE FULL SCREEN ALERT ACCORDING TO THE NOTE ABOVE.
-        if ((cameras.length == 1 && !cameras[0].label) || (mics.length == 1 && !mics[0].label)) {
+        if ((cameras.length == 1 && !(cameras[0].label)) || (mics.length == 1 && !(mics[0].label))) {
             const title = `Media Device Issue`
             let message = ``;
             if (cameras.length == 1 && !cameras[0].label) {
                 message = `You may disable the access to camara for this website or you don't have any available camara.<br>`
-                let option = document.createElement(`option`);
-                option.innerHTML = `No available camara`;
-                option.value = ``;
-                videoSelector.add(option);
             }
             if (mics.length == 1 && !mics[0].label) {
                 message += `You may disable the access to microphone for this website or you don't have any available microphone.`
-                let option = document.createElement(`option`);
-                option.innerHTML = `No available microphone`;
-                option.value = ``;
-                audioSelector.add(option);
             }
             const alert = new AlertBox(message, title);
             alert.show();
@@ -309,71 +259,162 @@ export class Chatroom {
 
         //put cameras into the selection
         if (cameras) {
+            const currentUsedCam = this.localStream?.getVideoTracks()[0]?.label;//get the cam that is being used, may be null.
+            let hasSelectedItem = false;//set a flag if there is a cam is being used, and selected in the list
             for (const cam of cameras) {
                 if (cam.label) {
-                    const currentUsedCam = this.localStream.getVideoTracks()[0].label;
+                    //generate option
                     let option = document.createElement(`option`);
                     option.value = cam.deviceId;
                     option.innerHTML = cam.label;
                     if (cam.label == currentUsedCam) {
-                        option.setAttribute(`selected`, ``);
+                        option.selected = true;
+                        hasSelectedItem = true;//set the flag
                     }
                     videoSelector.add(option);
                 }
-
             }
+            //generate an option for no cam
+            let optionForCamOff = document.createElement(`option`);
+            optionForCamOff.value = `false`;
+            optionForCamOff.innerHTML = `Cam Off`;
+            if (!hasSelectedItem) {
+                optionForCamOff.selected = true;
+            }
+            videoSelector.add(optionForCamOff);
+
         }
 
         //put mics into the selection
         if (mics) {
+            let hasSelectedItem = false;//set a flag if there is a mic is being used, and selected in the list
             for (const mic of mics) {
                 if (mic.label) {
-                    const currentUsedMic = this.localStream.getAudioTracks()[0].label;
+                    const currentUsedMic = this.localStream?.getAudioTracks()[0]?.label;
                     let option = document.createElement(`option`);
                     option.value = mic.deviceId;
                     option.innerHTML = mic.label;
                     if (mic.label == currentUsedMic) {
-                        option.setAttribute(`selected`, ``);
+                        option.selected = true;
+                        hasSelectedItem = true;
                     }
                     audioSelector.add(option);
                 }
             }
+            //generate an option for no mic
+            let optionForMicOff = document.createElement(`option`);
+            optionForMicOff.value = `false`;
+            optionForMicOff.innerHTML = `Mic Off`;
+            if (!hasSelectedItem) {
+                optionForMicOff.selected = true;
+            }
+            audioSelector.add(optionForMicOff);
         }
 
         //set cancel button Onclick event
-        cancelButton.addEventListener(`click`, () => {
-            this.activeVideo.srcObject = previousActiveSpeaker;
+        const cancelButtonClickEvent = () => {
+            this.switchVideoPlayersToCentre(previousCentrePlayerOwner);
+            applyButton.removeEventListener(`click`, applyButtonClickEvent);
+            cancelButton.removeEventListener(`click`, cancelButtonClickEvent);
+            videoSelector.onchange = null;
             this.closeSetting();
-        });
+        }
+
+        if (this.settingOnce) {
+            cancelButton.disabled = false;
+            cancelButton.title = `Dismiss changes`;
+            cancelButton.addEventListener(`click`, cancelButtonClickEvent);
+        } else {
+            cancelButton.disabled = true;
+            cancelButton.title = `You must set the media device before the meeting starts.`;
+        }
 
 
         //set apply button Onclick event
-        applyButton.addEventListener(`click`, () => {
-            const micID = audioSelector.value || false;
-            const camID = videoSelector.value || false;
+        const applyButtonClickEvent = async () => {
+            const micID = audioSelector.value == `false` ? false : audioSelector.value || false;
+            const camID = videoSelector.value == `false` ? false : videoSelector.value || false;
 
             const constrain: MediaStreamConstraints = {
                 audio: micID ? { echoCancellation: true, deviceId: micID, noiseSuppression: true } : false,
                 video: camID ? { deviceId: camID } : false
             };
+            console.log(constrain);
 
+            await this.setLocalStream(constrain);
 
-            this.setLocalStream(constrain);
-            this.activeVideo.srcObject = previousActiveSpeaker;
+            //When user chooses a mic, enable the mute-button.
+            if (micID) {
+                if (this.muted) {
+                    this.selfMicButton.title = `Click to unmute youself`;
+                    this.selfMicButton.innerHTML = this.mutedSVG;
+                    this.localStream?.getAudioTracks().forEach(t => {
+                        t.enabled = false;
+                    })
+                } else {
+                    this.selfMicButton.title = `Click to mute youself`;
+                    this.selfMicButton.innerHTML = this.unmutedSVG;
+                    this.localStream?.getAudioTracks().forEach(t => {
+                        t.enabled = true;
+                    })
+                }
+                this.selfMicButton.disabled = false;
+            } else {
+                this.selfMicButton.innerHTML = this.mutedSVG;
+                this.selfMicButton.disabled = true;
+                this.selfMicButton.title = `No Microphone`;
+            }
+            //When user chooses a cam, enable the cam-button.
+            if (camID) {
+                if (this.camOff) {
+                    this.selfCamButton.title = `Click to turn on camara`;
+                    this.selfCamButton.innerHTML = this.camOffSVG;
+                    this.localStream?.getVideoTracks().forEach(t => {
+                        t.enabled = false;
+                    })
+                } else {
+                    this.selfCamButton.title = `Click to turn off camara`;
+                    this.selfCamButton.innerHTML = this.camOnSVG;
+                    this.localStream?.getVideoTracks().forEach(t => {
+                        t.enabled = true;
+                    })
+                }
+                this.selfCamButton.disabled = false;
+            } else {
+                this.selfCamButton.innerHTML = this.camOffSVG;
+                this.selfCamButton.disabled = true;
+                this.selfCamButton.title = `No Camara`;
+            }
+            //Put the center player back to previous media
+            this.switchVideoPlayersToCentre(previousCentrePlayerOwner);
+
+            this.settingOnce = true;
+            videoSelector.onchange = null;
+            cancelButton.removeEventListener(`click`, cancelButtonClickEvent);
+            applyButton.removeEventListener(`click`, applyButtonClickEvent);
+
             this.closeSetting();
-        });
+        }
+
+        applyButton.addEventListener(`click`, applyButtonClickEvent);
 
         // set video option changes for preview
         videoSelector.onchange = () => {
-            const micID = audioSelector.value || false;
-            const camID = videoSelector.value || false;
+            const micID = audioSelector.value == `false` ? false : audioSelector.value || false;
+            const camID = videoSelector.value == `false` ? false : videoSelector.value || false;
 
             const constrain: MediaStreamConstraints = {
                 audio: micID ? { echoCancellation: true, deviceId: micID, noiseSuppression: true } : false,
                 video: camID ? { deviceId: camID } : false
             };
+            console.log(`MEDIA SELECTION CHANGE::::`, constrain);
 
-            this.previewLocalStream(constrain);
+            if (!micID && !camID) {
+                this.activeVideo.srcObject = null;
+            } else {
+                this.previewSelectedStream(constrain);
+            }
+
         }
 
 
@@ -389,6 +430,8 @@ export class Chatroom {
     private closeSetting() {
         this.setting.classList.remove(`dsp-flex`);
         this.setting.classList.add(`dsp-none`);
+        this.settingIsOpened = false;
+
     }
 
 
@@ -398,7 +441,15 @@ export class Chatroom {
      * @returns 
      */
     private async getConnectedDevices(type: MediaDeviceKind) {
+        //get temporary access to both mic and cam, so that it will generate labels of applicable device
+        const tempMediaAccess = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        //get the device list
         const devices = await navigator.mediaDevices.enumerateDevices();
+        //stop access to mic and cam
+        tempMediaAccess?.getTracks().forEach(track => {
+            track.stop();
+        })
+        //return the desired device list by filtering
         return devices.filter(device => device.kind === type)
     }
 
@@ -416,13 +467,13 @@ export class Chatroom {
     */
     async getMediaPermission() {
         const defaultConstrain = {
-            audio: { echoCancellation: true },
+            audio: { echoCancellation: true, noiseSuppression: true },
             video: true
         }
 
         try {
             this.localStream = await navigator.mediaDevices.getUserMedia(defaultConstrain);
-            this.activeVideo.srcObject = this.localStream;
+            this.switchVideoPlayersToCentre(this.socket.id);
             return true;
         } catch (error) {
             console.log(error);
@@ -432,29 +483,186 @@ export class Chatroom {
     }
 
 
-
-    private async previewLocalStream(constrain: MediaStreamConstraints) {
-        const mediaStream = await navigator.mediaDevices.getUserMedia(constrain);
-        this.activeVideo.srcObject = mediaStream;
-    }
-
-    private async setLocalStream(constrain: MediaStreamConstraints) {
-        this.localStream = await navigator.mediaDevices.getUserMedia(constrain);
-    }
-
-    private setActiveSpeaker(socketID: string) {
-        this.activeFrame.my_relation = socketID;
-
-        if (socketID == this.socket.id) {
-            //If the active speaker media is from user's own cam and mic, always mute the mic
-            //to reduce echo.
+    /**
+     * Put the media that matches the seleted constrains to the centre player to preview
+     * Note: The media the user is looking at is not sent to remote peer yet
+     * @param constrain 
+     */
+    private async previewSelectedStream(constrain: MediaStreamConstraints) {
+        try {
+            const mediaStream = await navigator.mediaDevices.getUserMedia(constrain);
+            this.activeVideo.srcObject = mediaStream;
             this.activeVideo.muted = true;
-            this.activeVideo.srcObject = this.localStream;
-        } else {
-            const connection = this.connections.get(socketID);
-            this.activeVideo.srcObject = connection.remoteStream;
-            this.activeVideo.muted = false;
+        } catch (err) {
+            console.log(`ERROR WHEN PREVIWING SELECTED STREAM::::`, err);
         }
+
+    }
+
+
+    /**
+     * To set the local stream of the chat room, also set the local stream in every existing peer connection.
+     * For peer connection, the connection will remove the previous tracks added,
+     * then add the local stream tracks to the peer connection if the local stream is not null.
+     * @param constrain 
+     */
+    private async setLocalStream(constrain: MediaStreamConstraints) {
+        if (!constrain.audio && !constrain.video) {
+            //if the user choose mic off and cam off, remove the local stream
+            this.localStream = null;
+            this.connections.forEach(c => {
+                c.localStream = null;
+                c.setLocalTracks();
+            })
+        } else {
+
+            try {
+                this.localStream = await navigator.mediaDevices.getUserMedia(constrain);
+                this.connections.forEach(c => {
+                    c.localStream = this.localStream;
+                    c.setLocalTracks();
+                })
+            } catch (err) {
+                console.log(`ERROR WHEN SETTING LOCAL STREAM::::`, err);
+            }
+
+        }
+
+
+
+    }
+
+
+    /**
+     * Swith the desired media stream to the centre player with its socket ID
+     * @param socketIDToCenter 
+     * @returns 
+     */
+    private switchVideoPlayersToCentre(socketIDToCenter: string) {
+        if (!socketIDToCenter) {
+            console.log(`ERROR :::: GET AN EMPTY SOCKET ID WHEN SWITCHING VIDEO PLAYER`);
+            return;
+        }
+        //check if any preview belongs to the socket id that is going to be put in the centre player
+        const previews = this.previewContainer.children;
+        let preview: myDiv;//look for preview, may be null
+        for (const p of previews) {
+            if ((p as myDiv).my_relation == socketIDToCenter) {
+                preview = p as myDiv;
+            }
+        }
+
+        const socketIDToPreview = this.activeFrame.my_relation;//get the owner of centre player(gonna put this to preview container)
+        if (!socketIDToPreview) {
+            console.log(`ERROR :::: CANNOT GET OWNER OF CENTRE PLAYER WHEN SWITCHING VIDEO PLAYER`);
+            return;
+        }
+        //if the owner of the centre player is the same with the one that is about to be put to centre player, no need to switch.
+        if (socketIDToCenter == socketIDToPreview) {
+            this.activeVideo.srcObject = this.localStream;
+            this.activeVideo.muted = true;
+            console.log(`SWITCHING VIDEO PLAYER:::: SAME OWNER, NO NEED TO SWITCH`);
+            return;
+        }
+
+
+        this.activeFrame.my_relation = socketIDToCenter;//set centre player owner
+        //set the centre player
+        if (socketIDToCenter == this.socket.id) {
+            //put local stream to centre player
+            this.activeVideo.srcObject = this.localStream;
+            this.activeVideo.muted = true;
+        } else {
+            //put the remote stream to centre player
+            const connection = this.connections.get(socketIDToCenter); //get the peer connection belonging to the id
+            if (connection) {
+                connection.videoContainer = this.activeFrame;
+                this.activeVideo.srcObject = connection.remoteStream;
+                this.activeVideo.muted = false;
+            } else {
+                console.log(`ERROR :::: CANNOT FIND CONNECTION WHEN PUTTING A REMOTE STREAM TO CENTRE PLAYER`);
+            }
+        }
+
+        //set the preview player
+        if (preview) {
+            preview.my_relation = socketIDToPreview;//set preview owner
+            let videoPlayer = preview.querySelector(`video`);
+            let micDiv = preview.querySelector(`.micDiv`);
+            if (socketIDToPreview == this.socket.id) {
+                //put local stream to the preview player
+                videoPlayer.srcObject = this.localStream;
+                videoPlayer.muted = true;
+                micDiv.innerHTML = this.mutedSVG;
+
+            } else {
+
+                const connection = this.connections.get(socketIDToPreview); //get the peer connection belonging to the id
+                if (connection) {
+                    connection.videoContainer = preview;
+                    videoPlayer.srcObject = connection.remoteStream;
+                    videoPlayer.muted = false;
+                    micDiv.innerHTML = this.unmutedSVG;
+                } else {
+                    console.log(`ERROR :::: CANNOT FIND CONNECTION WHEN PUTTING A REMOTE STREAM TO PREVIEW PLAYER`);
+                }
+            }
+        } else {
+            console.log(`SWITCH VIDEO PLAYER :::: NO PREVIEW`);
+        }
+
+
+
+    }
+
+    /**
+     * To turn off the user's microphone(the remote peer cannot hear the user)
+     * Note: the microphone is still accessed by the application, if there is one selected in the setting.
+     */
+    private toggleMute() {
+
+        if (!this.selfMicButton.disabled) {
+            this.muted = !this.muted;
+            if (this.muted) {
+                this.selfMicButton.title = `Click to unmute youself`;
+                this.selfMicButton.innerHTML = this.mutedSVG;
+                this.localStream?.getAudioTracks().forEach(track => {
+                    track.enabled = false;
+                })
+            } else {
+                this.selfMicButton.title = `Click to mute youself`;
+                this.selfMicButton.innerHTML = this.unmutedSVG;
+                this.localStream?.getAudioTracks().forEach(track => {
+                    track.enabled = true;
+                })
+            }
+        }
+    }
+
+    /**
+     * To turn off the user's camara(the remote peer cannot see the user)
+     * Note: the camara is still accessed by the application, if there is one selected in the setting.
+     */
+    private toggleCam() {
+
+        if (!this.selfCamButton.disabled) {
+            this.camOff = !this.camOff;
+            if (this.camOff) {
+                this.selfCamButton.title = `Click to turn on camara`;
+                this.selfCamButton.innerHTML = this.camOffSVG;
+                this.localStream?.getVideoTracks().forEach(track => {
+                    track.enabled = false;
+                })
+            } else {
+                this.selfCamButton.title = `Click to turn off camara`;
+                this.selfCamButton.innerHTML = this.camOnSVG;
+                this.localStream?.getVideoTracks().forEach(track => {
+                    track.enabled = true;
+                })
+            }
+        }
+
+
     }
 
 
@@ -478,6 +686,7 @@ export class Chatroom {
         pinDiv.innerHTML = this.unpinSVG;
         let micDiv = document.createElement(`div`);
         micDiv.innerHTML = this.unmutedSVG;
+        micDiv.classList.add(`micDiv`);
         controlsDiv.append(pinDiv, micDiv);
 
         let videoCover = document.createElement(`div`);
@@ -487,23 +696,44 @@ export class Chatroom {
         videoFrame.autoplay = true;
         videoFrame.playsInline = true
         videoFrame.srcObject = videoSource;
-        if (videoSource == this.localStream) {
-            videoFrame.muted = true
+        if (previewDiv.my_relation == this.socket.id) {
+            videoFrame.muted = true;
+            micDiv.innerHTML = this.mutedSVG;
         }
 
         previewDiv.append(controlsDiv, videoCover, videoFrame);
 
-        previewDiv.addEventListener(`click`, e => {
-            console.log(`This preview belongs to ${previewDiv.my_relation}`);
-        })
+        pinDiv.onclick = () => {
+            console.log(`Pin this to central player ${previewDiv.my_relation}`);
+            //Only when the setting is not opened, the user can switch players
+            if (!this.settingIsOpened) {
+                this.pinedMedia = previewDiv.my_relation;
+                this.switchVideoPlayersToCentre(previewDiv.my_relation);
+            }
+
+        }
+
+        micDiv.onclick = () => {
+            console.log(`Toggle mute for ${previewDiv.my_relation}`);
+            //Only the remote stream can be toggled mute/unmute
+            if (previewDiv.my_relation != this.socket.id) {
+                videoFrame.muted = !videoFrame.muted;
+                if (videoFrame.muted) {
+                    micDiv.innerHTML = this.mutedSVG;
+                } else {
+                    micDiv.innerHTML = this.unmutedSVG;
+                }
+            }
+
+        }
 
         return previewDiv;
     }
 
     /**
-     * It stores the events for socket IO
+     * It registers the events for socket IO
      */
-    socketCommunication() {
+    setSocketCommunication() {
         this.socket.on(`invitation accepted by`, async (_id: string) => {
             console.log(`YOUR INVITATION IS ACCEPT BY ${_id}.`);
         });
@@ -520,19 +750,17 @@ export class Chatroom {
                 }
                 this.previewContainer.appendChild(newPreview);
 
-                let addSource = (newStream: MediaStream) => {
-                    newPreview.querySelector(`video`).srcObject = newStream;
-                };
+
 
                 //Connection section
-                let newConnection = new PConnection(socketID, this.localStream, this.socket, addSource);
-                await newConnection.addLocalTracks();
+                let newConnection = new PConnection(socketID, this.localStream, this.socket, newPreview);
+                if (this.settingOnce) {
+                    await newConnection.setLocalTracks();
+                }
                 this.connections.set(socketID, newConnection);
                 console.log(`WAIT FOR OFFER & ICE FROM USER ${socketID}`);
 
                 console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
-
-
 
             }, 2000)
 
@@ -543,34 +771,34 @@ export class Chatroom {
         this.socket.on(`You need to provide offer`, async (users: string[]) => {
             console.log(`You need to provide offer`);
             setTimeout(async () => {
-            const myID = this.socket.id;
-            const otherUsers = users.filter(u => u != myID);
-            console.log(`Provide Offer:::::Other users:${otherUsers}`)
-            otherUsers.forEach(async socketID => {
+                const myID = this.socket.id;
+                const otherUsers = users.filter(u => u != myID);
+                console.log(`Provide Offer:::::Other users:${otherUsers}`)
 
-                //UI section
-                let newPreview = this.createPreview(socketID);
-                console.log(`Provide Offer:::::Created preview for ${socketID}`);
-                if (this.previewContainer.children.length < 1) {
-                    this.previewContainer.classList.remove(`dsp-none`);
-                    this.previewContainer.classList.add(`dsp-flex`);
-                }
-                this.previewContainer.appendChild(newPreview);
+                otherUsers.forEach(async socketID => {
 
+                    //UI section
+                    let newPreview = this.createPreview(socketID);
+                    console.log(`Provide Offer:::::Created preview for ${socketID}`);
+                    if (this.previewContainer.children.length < 1) {
+                        this.previewContainer.classList.remove(`dsp-none`);
+                        this.previewContainer.classList.add(`dsp-flex`);
+                    }
+                    this.previewContainer.appendChild(newPreview);
 
-                let addSource = (newStream: MediaStream) => {
-                    newPreview.querySelector(`video`).srcObject = newStream;
-                };
+                    //Connection section
+                    let newConnection = new PConnection(socketID, this.localStream, this.socket, newPreview);
+                    this.connections.set(socketID, newConnection);
+                    if (this.settingOnce) {
+                        //if the user already set the media once, put the desired media to the connection
+                        await newConnection.setLocalTracks();
+                    }
 
-                //Connection section
-                let newConnection = new PConnection(socketID, this.localStream, this.socket, addSource);
-                await newConnection.addLocalTracks();
-                await newConnection.initACall();
-                this.connections.set(socketID, newConnection);
+                    await newConnection.initACall();// To initialise a peer connection with/without local stream.
 
-                console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
+                    console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
+                });
 
-            });
             }, 2000)
 
         });
@@ -591,7 +819,7 @@ export class Chatroom {
 
         this.socket.on(`you answer from`, async (remoteID: string, answer: RTCSessionDescriptionInit) => {
             let connection = this.connections.get(remoteID);
-            if (connection != undefined) {
+            if (connection) {
                 connection.setAnswer(answer);
                 connection.listenToICE();
             } else {
@@ -603,7 +831,7 @@ export class Chatroom {
 
         this.socket.on(`icecandidate from`, async (remoteID: string, candidate: RTCIceCandidateInit) => {
             let connection = this.connections.get(remoteID);
-            if (connection != undefined) {
+            if (connection) {
 
                 try {
                     await connection.peerConnection.addIceCandidate(candidate);
@@ -622,6 +850,10 @@ export class Chatroom {
         this.socket.on(`leave`, (socketID: string) => {
             //get the applicable PConnection
             let connetion = this.connections.get(socketID);
+            if(!connetion){
+                console.log(`NO RELATED CONNECTION`);
+                return;
+            }
             //close that connection;
             connetion.close();
             //remove the connection
@@ -637,6 +869,29 @@ export class Chatroom {
                     break;
                 }
             }
+
+
+            //If the pined or the central player is the leaving one,replace them
+            if (this.pinedMedia == socketID) {
+                this.pinedMedia = null;
+            }
+            if (this.activeFrame.my_relation == socketID) {
+                this.activeFrame.my_relation = (this.previewContainer.firstElementChild as myDiv)?.my_relation || this.socket.id;
+                if (this.activeFrame.my_relation == this.socket.id) {
+                    this.activeVideo.srcObject = this.localStream;
+                    this.previewContainer.removeChild(this.previewContainer.firstElementChild);
+                } else {
+                    const conncetion = this.connections.get(this.activeFrame.my_relation);
+                    if (!conncetion) {
+                        console.log(`ERROR:::: CANNOT FIND CONNECTION WHEN SOMEONE IS LEAVING THE CHAT ROOM`);
+                        return;
+                    }
+                    this.activeVideo.srcObject = conncetion.remoteStream;
+                    conncetion.videoContainer = this.activeFrame;
+                    this.previewContainer.removeChild(this.previewContainer.firstElementChild);
+                }
+            }
+
             //If no previews in the container, hide it
             if (this.previewContainer.children.length == 0) {
                 this.previewContainer.classList.remove(`dsp-flex`);

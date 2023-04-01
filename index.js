@@ -55,6 +55,8 @@ app.use(
 * Routes
 */
 app.get(`/`, (req, res) => {
+    req.session.username = ``;
+    req.session.loggedIn = false;
     res.render(`index`);
 });
 
@@ -102,6 +104,8 @@ io.on('connection', function (socket) {
     //Response when one user disconneting with the server
     socket.on("disconnect", () => {
         
+        socket.broadcast.emit(`leave`, socket.id);
+
         activePatients = activePatients.filter(p => p.lastSocketID != socket.id);
         activePhysicians = activePhysicians.filter(p => p.lastSocketID != socket.id);
        

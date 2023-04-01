@@ -6,3 +6,4 @@ Ref.
 5. https://codepen.io/lonekorean/pen/OJQPmpm
 6. https://www.mongodb.com/blog/post/password-authentication-with-mongoose-part-1
 7. https://mongoosejs.com/docs/queries.html
+8. https://stackoverflow.com/questions/46648645/navigator-mediadevices-enumeratedevices-not-display-device-label-on-firefox
