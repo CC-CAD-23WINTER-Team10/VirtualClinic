@@ -110,3 +110,6 @@ keys/
 public/js/*.js
 public/js/*.js.map
 Database.js*
+/test-results/
+/playwright-report/
+/playwright/.cache/
