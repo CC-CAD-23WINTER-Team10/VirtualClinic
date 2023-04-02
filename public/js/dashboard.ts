@@ -1,6 +1,6 @@
 //@ts-ignore
 import { User, Status, myDiv, } from "./Modules.js";
-import { YesAlertBox } from "./AlertBox.js"
+import { AlertBox, YesAlertBox } from "./AlertBox.js"
 //@ts-ignore
 import { Chatroom } from "./Chatroom.js";
 /* 
@@ -510,6 +510,9 @@ socket.on(`invitation rejected by`, (_id: string) => {
         let callButton = detailDiv.querySelector(`button`);
         setCallButton(user,callButton);
     }
+
+    let alert = new AlertBox(`YOUR INVITATION IS REJECTED BY ${user.firstName + ` ` + user.lastName}.`);
+    alert.show();
 
     
 })
