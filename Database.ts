@@ -1,22 +1,59 @@
 //@ts-ignore
 const {mongoose, Schema, model} = require('mongoose');
+const Logging = require(`./Logging.js`);
 
 
 
 module.exports = class Database {
 
+    url:string = ``;
+    logfile:any;
     /**
      * Connect to the database when this instance is created
      * @param url MongoDB url
      */
-    constructor(url: string) {
-        //connect to database
-        this.connect(url);
+    constructor(url: string,logging:any) {
 
-        //Add demo users
-        setTimeout(async () => {
-            //console.log(await this.getAllUser());
+        this.url = url;
+        this.logfile = logging;
+
+    }
+
+    //User Schema
+    private readonly userSchema = new Schema({
+        firstName: String,
+        lastName: String,
+        username: {type:String, required: true, unique: true},
+        email: String,
+        password: {type:String, required: true},
+        kind: String,
+        lastSocketID: {type:String, default: ``},
+        img: {type:String, default: ``},
+        title: String,
+        department: String
+    });
+    
+    //User Model(Table)
+    User = model('User', this.userSchema);
+
+    /**
+     * Connect to the MongoDB
+     * 
+     */
+    async connect(){
+        try{
+           
+            console.log(`DB Connecting......`);
+            this.logfile.addLine(`DB Connecting......`);
+            //await mongoose.connect(`mongodb://mongo1:27017/virtual-clinic`);
+            //await mongoose.connect(`mongodb://127.0.0.1:27017/virtual-clinic`);
+            await mongoose.connect(this.url);
+            console.log(`DB Connection OK`);
+            this.logfile.addLine(`DB Connection OK`);
+
             console.log(`CHECKING USER INFO IN DATABASE`);
+            this.logfile.addLine(`CHECKING USER INFO IN DATABASE`);
+            //Add demo users
             let userAmount = (await this.getAllUser() as Array<Object>).length;
             if (userAmount < 1) {
                 let a = new this.User();
@@ -65,44 +102,16 @@ module.exports = class Database {
 
 
                 console.log(`DEMO USERS ARE ADDED`);
+                this.logfile.addLine(`EMO USERS ARE ADDED`);
             }
 
             console.log(`FINISHED CHECKING USER INFO IN DATABASE`);
-        }, 1000)
-
-    }
-
-    //User Schema
-    private readonly userSchema = new Schema({
-        firstName: String,
-        lastName: String,
-        username: {type:String, required: true, unique: true},
-        email: String,
-        password: {type:String, required: true},
-        kind: String,
-        lastSocketID: {type:String, default: ``},
-        img: {type:String, default: ``},
-        title: String,
-        department: String
-    });
-    
-    //User Model(Table)
-    User = model('User', this.userSchema);
-
-    /**
-     * Connect to the MongoDB
-     * @param url MongoDB url
-     */
-    async connect(url:string){
-        try{
-            console.log(`DB Connecting...`);
-            //await mongoose.connect(`mongodb://mongo1:27017/virtual-clinic`);
-            //await mongoose.connect(`mongodb://127.0.0.1:27017/virtual-clinic`);
-            await mongoose.connect(url);
-            console.log(`DB Connection OK`);
+            this.logfile.addLine(`FINISHED CHECKING USER INFO IN DATABASE`);
         } catch(err) { 
             console.log(`DB ERROR:`);
             console.log(err); 
+
+            this.logfile.addLine(`DB ERROR -- ${err}`);
         }
     }
 
@@ -124,6 +133,9 @@ module.exports = class Database {
      * @returns 
      */
     async getAuth(username:string,password:string){
+        if (!username && !password){
+            return false;
+        }
         const user = await this.User.findOne({username:username,password:password});
         if (user) {
             return true;
@@ -195,6 +207,7 @@ module.exports = class Database {
             user.lastSocketID = socketID;
             await user.save();
         } else {
+            this.logfile.addLine(`ATTEMPT TO UPDATE SOCKET ID IN DATABASE FAILED WITH USERNAME:${username}`)
             console.log(`ATTEMPT TO UPDATE SOCKET ID IN DATABASE FAILED WITH USERNAME:${username}`)
         }
         

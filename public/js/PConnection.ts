@@ -49,7 +49,7 @@ export class PConnection {
             console.log(`CONNECTION ${this.socketID} :::: Negotiation Needed`)
             this.initACall()
                 .catch((err) => {
-                    console.log(`CONNECTION ${this.socketID} :::: Negotiation Error: ${err}`)
+                    console.error(`CONNECTION ${this.socketID} :::: Negotiation Error: ${err}`)
 
                 });
         });
@@ -126,7 +126,7 @@ export class PConnection {
      */
     async setRemoteDescription(offer: RTCSessionDescriptionInit) {
         console.log(`CONNECTION ${this.socketID} :::: GET OFFER FROM CALLER.`);
-        this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await this.peerConnection.createAnswer();
         await this.peerConnection.setLocalDescription(answer);
 

@@ -113,3 +113,6 @@ Database.js*
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# logs
+logs/
