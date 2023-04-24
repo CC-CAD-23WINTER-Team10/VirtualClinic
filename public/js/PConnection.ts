@@ -5,12 +5,12 @@ import { myDiv } from "./Modules";
  * the configuration of the ICE Servers. This class will be responsible for SDPs and ICE candidates exchanges.  
  */
 export class PConnection {
-    socketID: string;
-    localStream: MediaStream;
+    remoteSocketID: string;
+    //pendingStream: MediaStream = null;
     remoteStream: MediaStream = null;
     videoContainer: myDiv;
     socket: any; //A reference to the socket..IO server
-    configuration = {
+    readonly configuration = {
         //STUN Servers
         iceServers: [
             {
@@ -23,83 +23,65 @@ export class PConnection {
     peerConnection: RTCPeerConnection; // WebRTC connection object
 
 
-    constructor(id: string, localStream: MediaStream, socket: any, initialVideoContainer: myDiv) {
-        this.socketID = id;
-        this.localStream = localStream;
+    constructor(remoteSocketID: string, socket: any, initialVideoContainer: myDiv) {
+        this.remoteSocketID = remoteSocketID;
         this.socket = socket;
         this.peerConnection = new RTCPeerConnection(this.configuration);
         this.videoContainer = initialVideoContainer;
 
         //FOR DEBUG
         this.peerConnection.addEventListener("iceconnectionstatechange", (event) => {
-            console.log(`CONNECTION ${this.socketID} :::: ICE Connection State: `, this.peerConnection.iceConnectionState);
+            console.log(`CONNECTION ${this.remoteSocketID} :::: ICE Connection State: `, this.peerConnection.iceConnectionState);
         });
         //FOR DEBUG
         this.peerConnection.addEventListener("icegatheringstatechange", (event) => {
-            console.log(`CONNECTION ${this.socketID} :::: ICE Gathering State: `, this.peerConnection.iceGatheringState);
+            console.log(`CONNECTION ${this.remoteSocketID} :::: ICE Gathering State: `, this.peerConnection.iceGatheringState);
         });
         //FOR DEBUG
         this.peerConnection.addEventListener("signalingstatechange", (event) => {
-            console.log(`CONNECTION ${this.socketID} :::: Signaling State: `, this.peerConnection.signalingState);
+            console.log(`CONNECTION ${this.remoteSocketID} :::: Signaling State: `, this.peerConnection.signalingState);
         });
-
-
-        //Listen to Negotiation event(track changes, device changes)
-        this.peerConnection.addEventListener("negotiationneeded", (event) => {
-            console.log(`CONNECTION ${this.socketID} :::: Negotiation Needed`)
-            this.initACall()
-                .catch((err) => {
-                    console.error(`CONNECTION ${this.socketID} :::: Negotiation Error: ${err}`)
-
-                });
-        });
-
 
         // Listen to enable the streaming video and audio on UI
         this.peerConnection.addEventListener('track', async (event) => {
-            console.log(`CONNECTION ${this.socketID} :::: NEW TRACK ${event.streams[0]}`);
+            console.log(`CONNECTION ${this.remoteSocketID} :::: NEW TRACK ${event.streams[0]}`);
             this.setRemoteStream(event.streams[0]);
 
         });
 
-
+        this.listenToNegotiationNeeded();
     }
 
     /**
-     * Put the local video and audio tracks into the peer connection
-     * Or remove the tracks
+     * Add tracks to the peer connection
+     * @param localStream 
      */
-    async setLocalTracks() {
-        //Someone might not grant access to media or the media is occupied by other applications
-        //In this case, check the local stream existance first,
-        //if not, just not add the tracks and they can still establish the connection for listening to others
-        if (this.localStream) {
-            console.log(`CONNECTION ${this.socketID}:::: START ADDING LOCAL TRACKS.`);
-
-            //remove all exsiting tracks(Audio and video) 
-            this.peerConnection.getSenders().forEach(sender => {
-                this.peerConnection.removeTrack(sender);
-            })
-
+    addTracks(localStream: MediaStream) {
+        if (localStream) {
+            console.log(`CONNECTION ${this.remoteSocketID}:::: START ADDING LOCAL TRACKS.`);
             // add new tracks
-            let localTracks = this.localStream.getTracks();
+            const localTracks = localStream.getTracks();
             localTracks.forEach(track => {
-                console.log(track);
-                this.peerConnection.addTrack(track, this.localStream);
-                //console.log(`track added`);
-
+                this.peerConnection.addTrack(track, localStream);
             });
+            console.log(`CONNECTION ${this.remoteSocketID}:::: Local Tracks is added.`);
 
-            console.log(`CONNECTION ${this.socketID}:::: Local Tracks is added.`);
         } else {
-            //remove all exsiting tracks if any(Audio and video) 
-            this.peerConnection.getSenders().forEach(sender => {
-                this.peerConnection.removeTrack(sender);
-            })
-            console.log(`CONNECTION ${this.socketID}:::: NO LOCAL TRACK IS AVAILABLE RIGHT NOW OR ALL TRACKS ARE REMOVED`)
+            console.error(`CONNECTION ${this.remoteSocketID}:::: CANNOT ADD TRACKS FROM EMPTY MEDIA STREAM`)
         }
+    }
 
+    /**
+     * Remove all tracks in the peer connection
+     */
+    removeTracks() {
+        console.log(`CONNECTION ${this.remoteSocketID}:::: START REMOVEING LOCAL TRACKS.`);
+        //remove all exsiting tracks(Audio and video) 
+        this.peerConnection.getSenders().forEach(sender => {
+            this.peerConnection.removeTrack(sender);
+        })
 
+        console.log(`CONNECTION ${this.remoteSocketID}:::: ALL TRACKS ARE REMOVED.`)
     }
 
 
@@ -108,15 +90,62 @@ export class PConnection {
      * For the person who is the lastest participant
      * to provide an offer to other peer(existing users in the chatroom)
      */
-    async initACall() {
-        console.log(`CONNECTION ${this.socketID} :::: INITIALISE A CALL.`);
+    /*async startFirstNegotiation() {
+        console.log(`CONNECTION ${this.remoteSocketID} :::: START A NEGOTIATION.`);
+        try {
+            let offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
 
-        let offer = await this.peerConnection.createOffer();
-        await this.peerConnection.setLocalDescription(offer);
+            this.socket.emit(`I provide offer`, offer, this.remoteSocketID);
+            console.log(`CONNECTION ${this.remoteSocketID} :::: SENT AN OFFER.`);
+        } catch (e) {
+            this.socket.emit(`Neogitation Failed`, this.remoteSocketID);
+            console.error(`CONNECTION ${this.remoteSocketID} :::: ERROR WHEN STARTING A NEGOTIATION.  ${e}`);
+        }
+    }*/
 
-        this.socket.emit(`I provide offer`, offer, this.socketID);
-        console.log(`CONNECTION ${this.socketID} :::: END OF CALL INITIALISATION.`);
+    /**
+     * Create an offer SDP and set the local SDP.
+     * Return an offer after setting the loacal SDP.
+     */
+    async getOffer() {
+        try {
+            const offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
+            return offer;
+        } catch (e) {
+            console.error(`CONNECTION ${this.remoteSocketID} :::: ERROR WHEN GETTING AN OFFER.  ${e}`);
+        }
+    }
+    /**
+     * Create an answer SDP according to the offer SDP provided.
+     * Return an answer SDP after setting the local SDP.
+     * @param offer 
+     */
+    async getAnswer(offer: RTCSessionDescriptionInit) {
+        try {
+            await this.peerConnection.setRemoteDescription(offer);
+            const answer = await this.peerConnection.createAnswer();
+            await this.peerConnection.setLocalDescription(answer);
+            return answer;
+        } catch (e) {
+            console.error(`CONNECTION ${this.remoteSocketID} :::: ERROR WHEN GETTING AN ANSWER.  ${e}`)
+        }
+    }
 
+    /**
+     * Set the remote SDP provided. If all sets, it will return ture.
+     * If there is an error, return false.
+     * @param answer 
+     */
+    async completeNegotiation(answer: RTCSessionDescriptionInit) {
+        try {
+            await this.peerConnection.setRemoteDescription(answer);
+            return "true";
+        } catch (e) {
+            console.error(`CONNECTION ${this.remoteSocketID} :::: ERROR WHEN COMPLETING A NEGOTIATION.  ${e}`);
+            return "false";
+        }
     }
 
 
@@ -124,25 +153,32 @@ export class PConnection {
      * For those who are already in the chatroom, send SDPs to other peer(Offer Provider)
      * @param offer the SDP from the offer provider
      */
-    async setRemoteDescription(offer: RTCSessionDescriptionInit) {
-        console.log(`CONNECTION ${this.socketID} :::: GET OFFER FROM CALLER.`);
-        await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await this.peerConnection.createAnswer();
-        await this.peerConnection.setLocalDescription(answer);
+    /*async answerToOffer(offer: RTCSessionDescriptionInit) {
+        console.log(`CONNECTION ${this.remoteSocketID} :::: GET OFFER FROM CALLER.`);
+        try {
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await this.peerConnection.createAnswer();
+            await this.peerConnection.setLocalDescription(answer);
+            this.socket.emit(`my answer to`, this.remoteSocketID, answer);
+            console.log(`CONNECTION ${this.remoteSocketID} :::: REPLY TO CALL WITH ANSWER.`);
+        } catch (e) {
+            this.socket.emit(`Neogitation Failed`, this.remoteSocketID);
+            console.error(`CONNECTION ${this.remoteSocketID} :::: ERROR WHEN ANSWERING AN OFFER.  ${e}`);
+        }
+    }*/
 
-        this.socket.emit(`my answer to`, this.socketID, answer);
-        console.log(`CONNECTION ${this.socketID} :::: REPLY TO CALL WITH ANSWER.`);
-
-    }
-
-    async setAnswer(answer: RTCSessionDescriptionInit) {
-        console.log(`CONNECTION ${this.socketID} :::: GET ANSWER FROM PEER.`);
-        const remoteDesc = new RTCSessionDescription(answer);
-        await this.peerConnection.setRemoteDescription(remoteDesc);
-
-        console.log(`CONNECTION ${this.socketID} :::: ANSWER IS SET.`);
-
-    }
+    /*async setAnswer(answer: RTCSessionDescriptionInit) {
+        console.log(`CONNECTION ${this.remoteSocketID} :::: GET ANSWER FROM PEER.`);
+        try {
+            const remoteDesc = new RTCSessionDescription(answer);
+            await this.peerConnection.setRemoteDescription(remoteDesc);
+            this.socket.emit(`Neogitation Completed`, this.remoteSocketID);
+            console.log(`CONNECTION ${this.remoteSocketID} :::: ANSWER IS SET.`);
+        } catch (e) {
+            this.socket.emit(`Neogitation Failed`, this.remoteSocketID);
+            console.error(`CONNECTION ${this.remoteSocketID} :::: ERROR WHEN SETTING AN ANSWERING.  ${e}`);
+        }
+    }*/
 
 
     /**
@@ -160,16 +196,25 @@ export class PConnection {
     }
 
 
-
+    /**
+     * Listen for ICE candidates and send to the other peer
+     */
     listenToICE() {
-        // Listen for ICE candidates and send to the other peer
-        this.peerConnection.addEventListener('icecandidate', event => {
+
+        this.peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-                //console.log(`Get ICE FROM STUN SERVER.`);
-                this.socket.emit('new-ice-candidate to', this.socketID, event.candidate);
-                //console.log(`SEND ICE TO USER ${this.socketID}.`);
+                this.socket.emit('new-ice-candidate to', this.remoteSocketID, event.candidate);
             }
-        });
+        };
+    }
+
+    listenToNegotiationNeeded() {
+        //Listen to Negotiation event(track changes, device changes)
+        this.peerConnection.onnegotiationneeded = () => {
+            console.log(`CONNECTION ${this.remoteSocketID} :::: Negotiation Needed`);
+
+            this.socket.emit(`NEGO:New negotiation needed with`, this.remoteSocketID);
+        };
     }
 
     /**
@@ -177,15 +222,15 @@ export class PConnection {
      * Besides, it stops media tracks, removes all references;
      */
     close() {
+        this.peerConnection.onicecandidate = null;
+        this.peerConnection.onnegotiationneeded = null;
         this.peerConnection.close();
         this.remoteStream?.getTracks().forEach(t => {
             t.stop();
         })
-        this.socketID = null;
-        this.localStream = null;
+        this.remoteSocketID = null;
         this.remoteStream = null;
         this.socket = null;
-        this.configuration = null;
         this.peerConnection = null;
         if (this.videoContainer.classList.contains(`preview`)) {
             this.videoContainer.parentElement?.removeChild(this.videoContainer);

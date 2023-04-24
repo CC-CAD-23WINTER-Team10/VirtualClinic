@@ -1,7 +1,7 @@
 //@ts-ignore
 const {mongoose, Schema, model} = require('mongoose');
+//@ts-ignore
 const Logging = require(`./Logging.js`);
-
 
 
 module.exports = class Database {

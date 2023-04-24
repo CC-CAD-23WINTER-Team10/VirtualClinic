@@ -12,10 +12,12 @@ const { Server } = require("socket.io"); // signaling among peers
 const session = require(`express-session`); // Login + sessions
 const Database = require('./Database.js') //MongoDB
 const Logging = require(`./Logging.js`);
+const NegotiationManager = require(`./Negotiation.js`);
 
+//log file
 const logFile = new Logging();
 //Localhost Determination
-const localhost = false; //Set to true when run on local host
+const localhost = true; //Set to true when run on local host
 // Create a service (the app object is just a callback).
 const app = express();
 // Create an HTTP service.
@@ -29,8 +31,11 @@ const serverHTTPS = localhost ? {} : https.createServer(credentials, app); // If
 //create Socket IO
 const io = new Server(localhost ? serverHTTP : serverHTTPS);
 //database
-const db = new Database(`mongodb://mongo1:27017/virtual-clinic`, logFile);// Customise your MongoDB url here
+const db = new Database(`mongodb://127.0.0.1:27017/virtual-clinic`, logFile);// Customise your MongoDB url here. sample: `mongodb://mongo1:27017/virtual-clinic`
 db.connect();
+//create Negotiation Manager to deal with WebRTC Peer connection negotations
+const nm = new NegotiationManager(io);
+
 var activePhysicians = [];//the active user array for the dashboard user list
 var activePatients = [];
 
@@ -97,14 +102,15 @@ app.get(`/dashboard`, (req, res) => {
 });
 
 /**
- * Socket.IO  ---Function for signaling
+ * Socket.IO & Negotiation Manager ---Function for signaling
  */
+
 io.on('connection', function (socket) {
     logFile.addLine(`SOCKET -- ${socket.id} CONNECTED`);
 
     /**
      * Dashboard IO
-     */ 
+     */
     socket.on("disconnecting", async () => {
         const user = await db.getOneUserBySocket(socket.id);
         if (user) {
@@ -260,9 +266,12 @@ io.on('connection', function (socket) {
                 console.log(`Invi Sender is in ${[...io.of("/").adapter.sids.get(invitationSender.lastSocketID).values()]}`);
                 console.log(`Invi Receiver is in ${[...io.of("/").adapter.sids.get(invitationReceiver.lastSocketID).values()]}`);
 
-                //send message to the invitation receiver to start peer connection estabilshment
-                socket.emit(`You need to provide offer`, users);//From here they communicate with socketID;
-                logFile.addLine(`SOCKET -- 'You need to provide offer' IS SENT TO ${invitationReceiver.firstName + ` ` + invitationReceiver.lastName}`);
+                //create negotiations to establish peer connections, the invitation receiver will be the offer provider
+                //socket.emit(`You need to provide offer`, users);//From here they communicate with socketID;
+                users.forEach(u => {
+                    nm.addNegotiationAndQueuing(socket.id, invitationSender.lastSocketID);
+                })
+                //logFile.addLine(`SOCKET -- 'You need to provide offer' IS SENT TO ${invitationReceiver.firstName + ` ` + invitationReceiver.lastName}`);
 
             } else {
                 //Maybe the invitation Sender disconnected from the server, it will get undefined.
@@ -312,9 +321,11 @@ io.on('connection', function (socket) {
      * Chat Room IO
      */
 
-
+    /*
     socket.on(`I provide offer`, async (offer, socketID) => {
         console.log(`${socket.id} PROVIDE OFFER TO ${socketID}`);
+        nm.addNegotiation(socket.id,socketID);
+
         io.to(socketID).emit(`new offer`, offer, socket.id);
 
         const provider = await db.getOneUserBySocket(socket.id);
@@ -336,6 +347,12 @@ io.on('connection', function (socket) {
         } else {
             logFile.addLine(`SOCKET ERROR -- SENT ANSWER FROM ${socket.id} TO ${socketID}`);
         }
+    });
+    */
+    socket.on(`NEGO:New negotiation needed with`, (socketID) => {
+        const offerSender = socket.id;
+        const receiver = socketID;
+        nm.addNegotiationAndQueuing(offerSender,receiver);
     });
 
     socket.on(`new-ice-candidate to`, async function (socketID, candidate) {
@@ -365,12 +382,7 @@ io.on('connection', function (socket) {
         console.log(`The chatroom he/she is gonna leave is:::: ${chatroomID}`)
         if (user && chatroomID) {
             socket.leave(chatroomID);
-            const restingUsers = io.of("/").adapter.rooms.get(chatroomID);
-            let message = `empty`;
-            if (restingUsers) {
-                message = Array.from(restingUsers);
-            }
-            console.log(`After leaving(Socket Room): `, message);
+
             io.to(chatroomID).emit(`leave`, socket.id);
 
             logFile.addLine(`SOCKET -- ${user.firstName + ` ` + user.lastName} LEFT CHAT ROOM ${chatroomID}`);

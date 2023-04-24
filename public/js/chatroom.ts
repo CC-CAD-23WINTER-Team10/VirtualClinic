@@ -5,6 +5,10 @@ import { User, Status, myDiv } from "./Modules.js";
 //@ts-ignore
 import { YesAlertBox, AlertBox } from "./AlertBox.js"
 
+interface reply{
+    sdp: RTCSessionDescriptionInit
+}
+
 
 /**
  * This is a Class mainly taking care of the Video Controls of the Div element with ID #chatroom
@@ -200,13 +204,7 @@ export class Chatroom {
         //remove media source 
         this.activeVideo.srcObject = null;
         //remove socket message listeners
-        this.socket.removeAllListeners(`new joiner`);
-        this.socket.removeAllListeners(`You need to provide offer`);
-        this.socket.removeAllListeners(`invitation accepted by`);
-        this.socket.removeAllListeners(`new offer`);
-        this.socket.removeAllListeners(`you answer from`);
-        this.socket.removeAllListeners(`icecandidate from`);
-        this.socket.removeAllListeners(`leave`);
+        this.removeSocketCommunication();
 
         console.log(`CHAT ROOM IS CLOSING`)
 
@@ -476,7 +474,7 @@ export class Chatroom {
             this.switchVideoPlayersToCentre(this.socket.id);
             return true;
         } catch (error) {
-            console.log(error);
+            console.error(error);
             return false;
         }
 
@@ -494,7 +492,7 @@ export class Chatroom {
             this.activeVideo.srcObject = mediaStream;
             this.activeVideo.muted = true;
         } catch (err) {
-            console.log(`ERROR WHEN PREVIWING SELECTED STREAM::::`, err);
+            console.error(`ERROR WHEN PREVIWING SELECTED STREAM::::`, err);
         }
 
     }
@@ -511,24 +509,22 @@ export class Chatroom {
             //if the user choose mic off and cam off, remove the local stream
             this.localStream = null;
             this.connections.forEach(c => {
-                c.localStream = null;
-                c.setLocalTracks();
-            })
+                c.removeTracks();
+            });
         } else {
 
             try {
-                this.localStream = await navigator.mediaDevices.getUserMedia(constrain);
+                const newStream = await navigator.mediaDevices.getUserMedia(constrain);
+                this.localStream = newStream;
                 this.connections.forEach(c => {
-                    c.localStream = this.localStream;
-                    c.setLocalTracks();
+                    c.removeTracks();
+                    c.addTracks(newStream);
                 })
             } catch (err) {
-                console.log(`ERROR WHEN SETTING LOCAL STREAM::::`, err);
+                console.error(`ERROR WHEN SETTING LOCAL STREAM::::`, err);
             }
 
         }
-
-
 
     }
 
@@ -540,7 +536,7 @@ export class Chatroom {
      */
     private switchVideoPlayersToCentre(socketIDToCenter: string) {
         if (!socketIDToCenter) {
-            console.log(`ERROR :::: GET AN EMPTY SOCKET ID WHEN SWITCHING VIDEO PLAYER`);
+            console.error(`ERROR :::: GET AN EMPTY SOCKET ID WHEN SWITCHING VIDEO PLAYER`);
             return;
         }
         //check if any preview belongs to the socket id that is going to be put in the centre player
@@ -554,7 +550,7 @@ export class Chatroom {
 
         const socketIDToPreview = this.activeFrame.my_relation;//get the owner of centre player(gonna put this to preview container)
         if (!socketIDToPreview) {
-            console.log(`ERROR :::: CANNOT GET OWNER OF CENTRE PLAYER WHEN SWITCHING VIDEO PLAYER`);
+            console.error(`ERROR :::: CANNOT GET OWNER OF CENTRE PLAYER WHEN SWITCHING VIDEO PLAYER`);
             return;
         }
         //if the owner of the centre player is the same with the one that is about to be put to centre player, no need to switch.
@@ -580,7 +576,7 @@ export class Chatroom {
                 this.activeVideo.srcObject = connection.remoteStream;
                 this.activeVideo.muted = false;
             } else {
-                console.log(`ERROR :::: CANNOT FIND CONNECTION WHEN PUTTING A REMOTE STREAM TO CENTRE PLAYER`);
+                console.error(`ERROR :::: CANNOT FIND CONNECTION WHEN PUTTING A REMOTE STREAM TO CENTRE PLAYER`);
             }
         }
 
@@ -604,7 +600,7 @@ export class Chatroom {
                     videoPlayer.muted = false;
                     micDiv.innerHTML = this.unmutedSVG;
                 } else {
-                    console.log(`ERROR :::: CANNOT FIND CONNECTION WHEN PUTTING A REMOTE STREAM TO PREVIEW PLAYER`);
+                    console.error(`ERROR :::: CANNOT FIND CONNECTION WHEN PUTTING A REMOTE STREAM TO PREVIEW PLAYER`);
                 }
             }
         } else {
@@ -740,7 +736,7 @@ export class Chatroom {
 
 
         this.socket.on(`new joiner`, async (socketID: string) => {
-            setTimeout(async () => {
+            //setTimeout(async () => {
                 //UI section
                 let newPreview = this.createPreview(socketID);
                 console.log(`NEW JOINER:::::Created preview for ${socketID}`);
@@ -753,21 +749,22 @@ export class Chatroom {
 
 
                 //Connection section
-                let newConnection = new PConnection(socketID, this.localStream, this.socket, newPreview);
-                if (this.settingOnce) {
-                    await newConnection.setLocalTracks();
+                let newConnection = new PConnection(socketID, this.socket, newPreview);
+                if (this.settingOnce && this.localStream) {
+                    newConnection.addTracks(this.localStream);
                 }
                 this.connections.set(socketID, newConnection);
                 console.log(`WAIT FOR OFFER & ICE FROM USER ${socketID}`);
 
-                console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
+                //console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
 
-            }, 2000)
+            //}, 2000)
 
 
 
         });
 
+        /*
         this.socket.on(`You need to provide offer`, async (users: string[]) => {
             console.log(`You need to provide offer`);
             setTimeout(async () => {
@@ -787,14 +784,14 @@ export class Chatroom {
                     this.previewContainer.appendChild(newPreview);
 
                     //Connection section
-                    let newConnection = new PConnection(socketID, this.localStream, this.socket, newPreview);
+                    let newConnection = new PConnection(socketID, this.socket, newPreview);
                     this.connections.set(socketID, newConnection);
-                    if (this.settingOnce) {
+                    if (this.settingOnce && this.localStream) {
                         //if the user already set the media once, put the desired media to the connection
-                        await newConnection.setLocalTracks();
+                        newConnection.addTracks(this.localStream);
                     }
 
-                    await newConnection.initACall();// To initialise a peer connection with/without local stream.
+                    await newConnection.startFirstNegotiation();// To initialise a peer connection with/without local stream.
 
                     console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
                 });
@@ -802,12 +799,80 @@ export class Chatroom {
             }, 2000)
 
         });
+*/
+        this.socket.on(`NEGO:You need to provide offer to`, (remoteSocketID: string, reply: any) => {
+            console.log(`GET NEW OFFER REQUEST FOR ${remoteSocketID}`);
+            let conncetion = this.connections.get(remoteSocketID);
+            if (conncetion) {
+                conncetion.getOffer().then(offer => {
+                    const offerString = JSON.stringify(offer);
+                    reply(offerString);
+                }).catch(reason => {
+                    console.error(`ERROR WHEN TRY TO GET AN OFFER FROM CONNECTION ${remoteSocketID}, ${reason}`);
+                });
+            } else {
+                //UI section
+                let newPreview = this.createPreview(remoteSocketID);
+                console.log(`Provide Offer:::::Created preview for ${remoteSocketID}`);
+                if (this.previewContainer.children.length < 1) {
+                    this.previewContainer.classList.remove(`dsp-none`);
+                    this.previewContainer.classList.add(`dsp-flex`);
+                }
+                this.previewContainer.appendChild(newPreview);
 
+                //Connection section
+                let newConnection = new PConnection(remoteSocketID, this.socket, newPreview);
+                this.connections.set(remoteSocketID, newConnection);
+                if (this.settingOnce && this.localStream) {
+                    //if the user already set the media once, put the desired media to the connection
+                    newConnection.addTracks(this.localStream);
+                }
+
+                newConnection.getOffer().then(offer => {
+                    const OfferString = JSON.stringify(offer);
+                    reply(OfferString);
+                }).catch(reason => {
+                    console.error(`ERROR WHEN TRY TO GET AN OFFER FROM CONNECTION ${remoteSocketID}, ${reason}`);
+                });
+            }
+        });
+
+        this.socket.on(`NEGO:You got a new offer from`, (remoteSocketID: string, offer: string, reply: any) => {
+            console.log(`GET A NEW OFFER FROM ${remoteSocketID}`);
+            let conncetion = this.connections.get(remoteSocketID);
+            if (conncetion) {
+                conncetion.getAnswer(JSON.parse(offer)).then(answer => {
+                    const answerString = JSON.stringify(answer);
+                    reply(answerString);
+                    conncetion.listenToICE();
+                }).catch(reason => {
+                    console.error(`ERROR WHEN TRY TO GET AN ANSWER FROM CONNECTION ${remoteSocketID}, ${reason}`);
+                });
+            } else {
+                console.error(`CANNOT FIND CONNECTION FOR ${remoteSocketID}, WHEN GETTING AN NEW OFFER.`);
+            }
+        });
+
+        this.socket.on(`NEGO:You got an answer from`, (remoteSocketID: string, answer: string, reply: any) => {
+            console.log(`GET AN ANSWER FROM ${remoteSocketID}`);
+            let conncetion = this.connections.get(remoteSocketID);
+            if (conncetion) {
+                conncetion.completeNegotiation(JSON.parse(answer)).then((isCompleted) => {
+                    conncetion.listenToICE();
+                    reply(isCompleted);
+                }).catch(reason => {
+                    console.error(`ERROR WHEN TRY TO COMPLETE A NEGOTIATION FOR CONNECTION ${remoteSocketID}, ${reason}`);
+                });
+            } else {
+                console.error(`CANNOT FIND CONNECTION FOR ${remoteSocketID}, WHEN GETTING AN NEW ANSWER.`);
+            }
+        });
+/*
         this.socket.on(`new offer`, (offer: RTCSessionDescriptionInit, remoteID: string) => {
             console.log(`GET NEW OFFER FROM ${remoteID}`);
             let connection = this.connections.get(remoteID);
             if (connection != undefined) {
-                connection.setRemoteDescription(offer);
+                connection.answerToOffer(offer);
                 connection.listenToICE();
             } else {
                 console.log(`CANNOT FIND CONNECTION WITH ID:${remoteID}. (socket.on(\`new offer\`))`);
@@ -828,7 +893,7 @@ export class Chatroom {
 
             console.log(`CURRENT CONNECTIONS: ${[...this.connections.entries()]}`);
         });
-
+*/
         this.socket.on(`icecandidate from`, async (remoteID: string, candidate: RTCIceCandidateInit) => {
             let connection = this.connections.get(remoteID);
             if (connection) {
@@ -850,7 +915,7 @@ export class Chatroom {
         this.socket.on(`leave`, (socketID: string) => {
             //get the applicable PConnection
             let connetion = this.connections.get(socketID);
-            if(!connetion){
+            if (!connetion) {
                 console.log(`NO RELATED CONNECTION`);
                 return;
             }
@@ -905,5 +970,14 @@ export class Chatroom {
     }
 
 
+    removeSocketCommunication(){
+        this.socket.removeAllListeners(`invitation accepted by`);
+        this.socket.removeAllListeners(`new joiner`);
+        this.socket.removeAllListeners(`NEGO:You need to provide offer to`);
+        this.socket.removeAllListeners(`NEGO:You got a new offer from`);
+        this.socket.removeAllListeners(`NEGO:You got an answer from`);
+        this.socket.removeAllListeners(`icecandidate from`);
+        this.socket.removeAllListeners(`leave`);
+    }
 
 }

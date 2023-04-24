@@ -108,8 +108,10 @@ keys/
 
 # typescript-complied js files
 public/js/*.js
-public/js/*.js.map
-Database.js*
+*.js.map
+Logging.js
+Database.js
+Negotiation.js
 /test-results/
 /playwright-report/
 /playwright/.cache/

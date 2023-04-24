@@ -2,21 +2,25 @@ const fs = require('fs');
 
 module.exports = class Logging {
     static readonly runningTime = Date.now();
-    readonly logFilePath = `logs/${Logging.runningTime}.txt`;
-    readonly dirOfLogs = 'logs';
+    static readonly logFilePath = `logs/${Logging.runningTime}.txt`;
+    static readonly dirOfLogs = 'logs';
+    private static fileOpened = false;
 
 
     constructor(){
-        if (!fs.existsSync(this.dirOfLogs)){
-            fs.mkdirSync(this.dirOfLogs);
+        if (!fs.existsSync(Logging.dirOfLogs)){
+            fs.mkdirSync(Logging.dirOfLogs);
         }
-
-        fs.open(this.logFilePath, 'w', function (err:any, file:number) {
-            if (err) throw err;
-            console.log('Log file Saved!');
-        }); 
-
-        this.addLine(`The application run on ${this.getTime()}.`);
+        if(!Logging.fileOpened){
+            fs.open(Logging.logFilePath, 'w', function (err:any, file:number) {
+                if (err) throw err;
+                console.log('Log file Saved!');
+            }); 
+    
+            this.addLine(`The application run on ${this.getTime()}.`);
+            Logging.fileOpened = true;
+        }
+        
     }
 
     getTime(){
@@ -25,7 +29,7 @@ module.exports = class Logging {
     }
 
     addLine(message:string){
-        fs.appendFile(this.logFilePath, `${this.getTime()} :: ${message}\r\n`, function (err:any) {
+        fs.appendFile(Logging.logFilePath, `${this.getTime()} :: ${message}\r\n`, function (err:any) {
             if (err) {
                 console.log(`File System ERROR :::: `, err);
             } 
