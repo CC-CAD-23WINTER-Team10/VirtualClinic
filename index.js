@@ -17,7 +17,7 @@ const NegotiationManager = require(`./Negotiation.js`);
 //log file
 const logFile = new Logging();
 //Localhost Determination
-const localhost = true; //Set to true when run on local host
+const localhost = false; //Set to true when run on local host
 // Create a service (the app object is just a callback).
 const app = express();
 // Create an HTTP service.
@@ -31,7 +31,7 @@ const serverHTTPS = localhost ? {} : https.createServer(credentials, app); // If
 //create Socket IO
 const io = new Server(localhost ? serverHTTP : serverHTTPS);
 //database
-const db = new Database(`mongodb://127.0.0.1:27017/virtual-clinic`, logFile);// Customise your MongoDB url here. sample: `mongodb://mongo1:27017/virtual-clinic`
+const db = new Database(`mongodb://mongo1:27017/virtual-clinic`, logFile);// Customise your MongoDB url here. sample: `mongodb://mongo1:27017/virtual-clinic`
 db.connect();
 //create Negotiation Manager to deal with WebRTC Peer connection negotations
 const nm = new NegotiationManager(io);
