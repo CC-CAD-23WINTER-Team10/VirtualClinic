@@ -22,7 +22,7 @@ var detailClickListener = function (e: MouseEvent) {
         destroyDetailElement(element);
     }
 }
-var userLog: string | Node;
+//var userLog: string | Node;
 
 /**
  * ICON SVG IMAGES
@@ -61,6 +61,7 @@ let shrinkableBoxFlexContent = shrinkableBox.querySelector(`div`) as HTMLDivElem
 let expensionButton = shrinkableBox.querySelector(`.expension-button`) as HTMLButtonElement;
 
 var userLogo = document.querySelector(`#user`) as HTMLDivElement;
+var userLogoStatus = userLogo.lastElementChild as HTMLDivElement;
 
 //SizeObservers
 let bodySizeObserver = new ResizeObserver(e => {
@@ -296,6 +297,7 @@ function setCallButton(user: User, callButton: HTMLButtonElement) {
                 if (currentStatus != Status.Busy) {
                     const previousStatus = currentStatus ?? Status.Available;
                     currentStatus = Status.Busy;//change the local user's status
+                    userLogoStatus.style.backgroundColor = currentStatus;
                     socket.emit(`Status Change`, Status.Busy);//notify server the new status
 
                     showChatroom();
@@ -307,6 +309,7 @@ function setCallButton(user: User, callButton: HTMLButtonElement) {
                         hidechatroom(); //hide chat room from the dashboard.(codes are still there)
                         chatroom = null; //remove Chatroom Object to release rescources;
                         currentStatus = previousStatus;// go back to previous status
+                        userLogoStatus.style.backgroundColor = currentStatus;
                         socket.emit(`Status Change`, currentStatus);//notify server the new status
                         console.log(`CHAT ROOM IS CLOSED.`);
                     }
@@ -359,13 +362,13 @@ socket.on("disconnect", () => {
 
 socket.on(`new user list`, (users: Array<User>) => {
     
-    if (!userLog){ //to show current login user --Check for userLog to eliminate duplicates
-        userArray = users.filter(u => u.lastSocketID == socket.id);  
-        //console.log(userArray[0]);
-        userLog = createUserElement(userArray[0]);
-        //console.log(userLog);
-        userLogo.append(userLog);
-    }
+    // if (!userLog){ //to show current login user --Check for userLog to eliminate duplicates
+    //     userArray = users.filter(u => u.lastSocketID == socket.id);  
+    //     //console.log(userArray[0]);
+    //     userLog = createUserElement(userArray[0]);
+    //     //console.log(userLog);
+    //     userLogo.append(userLog);
+    // }
     
     userArray = users.filter(u => u.lastSocketID != socket.id);//Remove the current user from the array.
 
@@ -448,6 +451,7 @@ socket.on("invitation from", (_id: string, name: string) => {
     let yesButtonEvent = () => {
         const previousStatus = currentStatus ?? Status.Available;
         currentStatus = Status.Busy;//change the local user's status to busy(ready to be in a chatroom)
+        userLogoStatus.style.backgroundColor = currentStatus;
         socket.emit(`Status Change`, Status.Busy);//notify server the new status
 
         showChatroom();
@@ -460,6 +464,7 @@ socket.on("invitation from", (_id: string, name: string) => {
             hidechatroom(); //hide chat room from the dashboard.(codes are still there)
             chatroom = null; //remove Chatroom Object to release rescources;
             currentStatus = previousStatus;// go back to previous status
+            userLogoStatus.style.backgroundColor = currentStatus;
             socket.emit(`Status Change`, currentStatus);//notify server the new status
             console.log(`CHAT ROOM IS CLOSED.`);
         }

@@ -63,7 +63,7 @@ app.use(
 * Routes
 */
 app.get(`/`, (req, res) => {
-    logFile.addLine(`HTTP(S) REQUEST -- ${req.session.username ? (req.session.username + `log out`) : `REQUEST HOME PAGE`}`)
+    logFile.addLine(`HTTP(S) REQUEST(GET)  -- ${req.session.username ? (req.session.username + `log out`) : `REQUEST HOME PAGE`}`)
     req.session.username = ``;
     req.session.loggedIn = false;
     res.render(`index`);
@@ -74,28 +74,30 @@ app.post(`/auth`, async (req, res) => {
     let username = req.body.username?.trim();
     let password = req.body.password?.trim();
     let validated = await db.getAuth(username, password);
-    logFile.addLine(`HTTP(S) REQUEST -- SOMEONE IS TRYING TO LOG IN`);
+    logFile.addLine(`HTTP(S) REQUEST(POST) -- SOMEONE IS TRYING TO LOG IN`);
     if (validated) {
         //Log in 
-        logFile.addLine(`HTTP(S) REQUEST -- ${username} LOGGED IN`);
+        logFile.addLine(`HTTP(S) REQUEST(POST)  -- ${username} LOGGED IN`);
         req.session.username = username; //save username in session
         req.session.loggedIn = true;
-        res.render(`dashboard`, { username });
+        const user = await db.getOneUser(username);
+        res.render(`dashboard`, { username, user});
 
     } else {
-        logFile.addLine(`HTTP(S) REQUEST -- FAILED TO LOG IN(${username ?? ``})`);
+        logFile.addLine(`HTTP(S) REQUEST(POST)  -- FAILED TO LOG IN(${username ?? ``})`);
         res.render(`index`, { authError: true });
     }
 });
 
 
-app.get(`/dashboard`, (req, res) => {
-    logFile.addLine(`HTTP(S) REQUEST -- DIRECT TO DASHBOARD`);
+app.get(`/dashboard`, async (req, res) => {
+    logFile.addLine(`HTTP(S) REQUEST(GET) -- DIRECT TO DASHBOARD`);
     if (req.session.loggedIn) {
         let username = req.session.username;
-        res.render(`dashboard`, { username });
+        const user = await db.getOneUser(username);
+        res.render(`dashboard`, { username, user });
     } else {
-        logFile.addLine(`HTTP(S) REQUEST -- REJECT TO DIRECT TO DASHBOARD`);
+        logFile.addLine(`HTTP(S) REQUEST(GET) -- REJECT TO DIRECT TO DASHBOARD`);
         res.redirect(`/`);
     }
 
@@ -429,8 +431,7 @@ function requireHTTPS(req, res, next) {
 }
 
 function sendNewListToPatients() {
-    const allActiveUser = activePhysicians.concat(activePatients[activePatients.length - 1]); //gets all physicians and last patient conected
-    io.in(`PatientRoom`).emit(`new user list`, allActiveUser);
+    io.in(`PatientRoom`).emit(`new user list`, activePhysicians);
 }
 
 function sendNewListToPhysicians() {

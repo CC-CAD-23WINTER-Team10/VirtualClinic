@@ -22,12 +22,12 @@ img {
 nav ul {
   display: flex;
   list-style: none;
-  margin: 30px;
-  padding: 30px;
+  margin: 0;
+  padding: 0;
 }
 
 nav li {
-  margin-right: 180px;
+  margin-right: 120px;
 }
 
 nav a {
@@ -52,7 +52,6 @@ body {
 
 main {
   flex: 1;
-
   display: flex;
   justify-content: center;
   align-items: center;
