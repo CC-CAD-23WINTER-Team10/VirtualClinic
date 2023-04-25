@@ -269,7 +269,7 @@ io.on('connection', function (socket) {
                 //create negotiations to establish peer connections, the invitation receiver will be the offer provider
                 //socket.emit(`You need to provide offer`, users);//From here they communicate with socketID;
                 users.forEach(u => {
-                    nm.addNegotiationAndQueuing(socket.id, invitationSender.lastSocketID);
+                    nm.addNegotiationAndQueuing(socket.id, u);
                 })
                 //logFile.addLine(`SOCKET -- 'You need to provide offer' IS SENT TO ${invitationReceiver.firstName + ` ` + invitationReceiver.lastName}`);
 
